@@ -6,15 +6,15 @@ from abc import ABC, abstractmethod
 from langchain_ollama import ChatOllama
 from langchain_core.prompts import ChatPromptTemplate
 
-from chatplants.core.config import get_settings
-from chatplants.core.monitoring import logger, chat_metrics, get_logger_with_context
-from chatplants.core.exceptions import (
+from agentragmcp.core.config import get_settings
+from agentragmcp.core.monitoring import logger, chat_metrics, get_logger_with_context
+from agentragmcp.core.exceptions import (
     AgentError, 
     AgentNotFoundError, 
     AgentSelectionError,
     handle_langchain_error
 )
-from chatplants.api.app.services.rag_service import RAGService
+from agentragmcp.api.app.services.rag_service import RAGService
 
 class BaseAgent(ABC):
     """Clase base abstracta para todos los agentes"""

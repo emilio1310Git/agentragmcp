@@ -1,6 +1,6 @@
 
 
-ffrom fastapi import HTTPException, status
+from fastapi import HTTPException, status
 from typing import Optional, Any, Dict
 
 class AgentRagMCPException(Exception):

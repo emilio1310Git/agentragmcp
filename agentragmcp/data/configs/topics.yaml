@@ -1,0 +1,305 @@
+# Configuración de temáticas RAG para AgentRagMCP
+# Define los diferentes dominios de conocimiento y sus características
+
+topics:
+  plants:
+    name: "plants"
+    display_name: "Plantas y Botánica General"
+    description: "Información general sobre plantas, cultivo, cuidados y botánica"
+    enabled: true
+    priority: 1
+    
+    # Configuración del vectorstore
+    vectorstore:
+      type: "chroma"
+      path: "./data/vectorstores/plants"
+      collection_name: "plants_collection"
+      
+    # Configuración del retriever
+    retrieval:
+      search_type: "mmr"  # mmr, similarity, similarity_score_threshold
+      k: 5
+      fetch_k: 20  # Para MMR
+      lambda_mult: 0.7  # Para MMR, balance entre diversidad y relevancia
+      score_threshold: 0.5  # Para similarity_score_threshold
+      
+    # Configuración específica del embedding
+    embedding:
+      model: "llama3.1"  # Se hereda de configuración global
+      chunk_size: 1000
+      chunk_overlap: 200
+      
+    # Prompt específico para esta temática
+    system_prompt: |
+      Eres un especialista en botánica y plantas. Tu conocimiento incluye:
+      
+      **Especialidades principales:**
+      - Información botánica general de plantas
+      - Cuidados y técnicas de cultivo
+      - Características de especies específicas (especialmente {specific_species})
+      - Técnicas de jardinería y horticultura
+      - Procesos biológicos fundamentales
+      
+      **Especies de especialización:**
+      {species_list}
+      
+      **Instrucciones de respuesta:**
+      - Proporciona información práctica y científicamente fundamentada
+      - Incluye consejos de cuidado cuando sea relevante
+      - Menciona condiciones ambientales necesarias
+      - Si no conoces algo específico, recomienda consultar con especialistas
+      - Responde en español de España, de forma clara y educativa
+      
+      Usa la información del contexto proporcionado para dar respuestas precisas y útiles.
+      
+      {context}
+      
+    # Metadatos y categorías
+    categories:
+      - "botánica_general"
+      - "cultivo_plantas"
+      - "cuidados_plantas"
+      - "especies_específicas"
+      - "técnicas_jardinería"
+      - "procesos_biológicos"
+      
+    # Palabras clave asociadas
+    keywords:
+      primary:
+        - "planta"
+        - "cultivo"
+        - "botánica"
+        - "jardín"
+        - "especie"
+      secondary:
+        - "cuidado"
+        - "riego"
+        - "fertilización"
+        - "poda"
+        - "reproducción"
+
+  pathology:
+    name: "pathology"
+    display_name: "Patologías y Enfermedades de Plantas"
+    description: "Diagnóstico, tratamiento y prevención de enfermedades y plagas en plantas"
+    enabled: true
+    priority: 1
+    
+    vectorstore:
+      type: "chroma"
+      path: "./data/vectorstores/pathology"
+      collection_name: "pathology_collection"
+      
+    retrieval:
+      search_type: "similarity_score_threshold"
+      k: 7  # Más documentos para casos complejos
+      score_threshold: 0.4  # Umbral más bajo para síntomas diversos
+      
+    embedding:
+      model: "llama3.1"
+      chunk_size: 800  # Chunks más pequeños para síntomas específicos
+      chunk_overlap: 150
+      
+    system_prompt: |
+      Eres un especialista en fitopatología y sanidad vegetal. Tu experiencia incluye:
+      
+      **Especialidades principales:**
+      - Diagnóstico de enfermedades de plantas
+      - Identificación de plagas y patógenos
+      - Tratamientos fitosanitarios
+      - Estrategias de prevención y control integrado
+      - Patologías específicas en {target_species}
+      
+      **Especies objetivo:**
+      {species_list}
+      
+      **Tipos de patógenos:**
+      - Hongos fitopatógenos
+      - Bacterias de plantas
+      - Virus vegetales
+      - Insectos plaga
+      - Ácaros y nematodos
+      
+      **Instrucciones de respuesta:**
+      - Proporciona diagnósticos basados en síntomas descritos
+      - Recomienda tratamientos apropiados y seguros
+      - Incluye medidas preventivas
+      - Advierte sobre el uso seguro de productos fitosanitarios
+      - Sugiere métodos de control integrado cuando sea posible
+      - Si los síntomas son complejos, recomienda análisis profesional
+      
+      IMPORTANTE: Siempre incluye advertencias de seguridad para productos químicos.
+      
+      {context}
+      
+    categories:
+      - "diagnóstico_enfermedades"
+      - "identificación_plagas"
+      - "tratamientos_fitosanitarios"
+      - "prevención_patologías"
+      - "control_integrado"
+      - "síntomas_visuales"
+      
+    keywords:
+      primary:
+        - "enfermedad"
+        - "plaga"
+        - "síntomas"
+        - "tratamiento"
+        - "control"
+      secondary:
+        - "hongo"
+        - "bacteria"
+        - "virus"
+        - "insecto"
+        - "prevención"
+
+  general:
+    name: "general"
+    display_name: "Conocimiento General de Plantas"
+    description: "Información educativa y divulgativa sobre el mundo vegetal"
+    enabled: true
+    priority: 2
+    
+    vectorstore:
+      type: "chroma"
+      path: "./data/vectorstores/general"
+      collection_name: "general_collection"
+      
+    retrieval:
+      search_type: "mmr"
+      k: 4
+      fetch_k: 15
+      lambda_mult: 0.8  # Más énfasis en relevancia para consultas generales
+      
+    embedding:
+      model: "llama3.1"
+      chunk_size: 1200  # Chunks más grandes para contexto amplio
+      chunk_overlap: 250
+      
+    system_prompt: |
+      Eres un educador y divulgador científico especializado en botánica. Tu rol incluye:
+      
+      **Especialidades principales:**
+      - Educación botánica general
+      - Divulgación científica del mundo vegetal
+      - Conceptos fundamentales de biología vegetal
+      - Historia natural y evolución de plantas
+      - Ecología y relaciones plantas-ambiente
+      
+      **Enfoque educativo:**
+      - Explica conceptos complejos de manera accesible
+      - Proporciona ejemplos concretos y analogías
+      - Incluye datos curiosos e interesantes
+      - Conecta conceptos básicos con aplicaciones prácticas
+      - Fomenta la curiosidad y el aprendizaje continuo
+      
+      **Tipos de consultas:**
+      - Definiciones y conceptos básicos
+      - Procesos biológicos fundamentales
+      - Clasificación y taxonomía
+      - Curiosidades del reino vegetal
+      - Preguntas educativas generales
+      
+      **Instrucciones de respuesta:**
+      - Adapta el nivel de complejidad a la pregunta
+      - Incluye contexto histórico o evolutivo cuando sea relevante
+      - Proporciona información fundamentada científicamente
+      - Sugiere temas relacionados para profundizar
+      - Responde de forma clara, educativa y motivadora
+      
+      {context}
+      
+    categories:
+      - "educación_botánica"
+      - "conceptos_básicos"
+      - "procesos_biológicos"
+      - "clasificación_plantas"
+      - "curiosidades_vegetales"
+      - "divulgación_científica"
+      
+    keywords:
+      primary:
+        - "qué es"
+        - "cómo funciona"
+        - "por qué"
+        - "explicar"
+        - "botánica"
+      secondary:
+        - "definición"
+        - "concepto"
+        - "información"
+        - "curiosidades"
+        - "aprender"
+
+# Configuración global de retrieval
+global_retrieval_config:
+  # Configuración por defecto para todos los topics
+  default_k: 5
+  default_search_type: "mmr"
+  max_k: 10
+  min_score_threshold: 0.3
+  
+  # Configuración de re-ranking (si está disponible)
+  reranking:
+    enabled: false
+    model: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    top_k: 3
+
+# Configuración de embeddings
+embedding_config:
+  # Configuración global de embeddings
+  default_model: "llama3.1"
+  normalize_embeddings: true
+  
+  # Configuración de chunking
+  chunking:
+    default_chunk_size: 1000
+    default_overlap: 200
+    separators: ["\n\n", "\n", ". ", " "]
+    
+# Configuración de métricas por temática
+metrics_config:
+  track_retrieval_quality: true
+  track_response_relevance: true
+  
+  quality_metrics:
+    - "retrieval_precision"
+    - "retrieval_recall" 
+    - "response_coherence"
+    - "source_diversity"
+    
+# Configuración de cache
+cache_config:
+  enabled: true
+  ttl_seconds: 3600  # 1 hora
+  max_entries: 1000
+  
+  cache_keys:
+    - "question_hash"
+    - "topic"
+    - "retrieval_params"
+
+# Configuración de evaluación automática
+evaluation_config:
+  enabled: false  # Activar cuando esté disponible
+  
+  evaluation_metrics:
+    - "answer_relevance"
+    - "context_precision"
+    - "context_recall"
+    - "faithfulness"
+    
+  evaluation_frequency: "weekly"
+  sample_size: 100
+
+# Configuración de backup y sincronización
+backup_config:
+  enabled: true
+  backup_frequency: "daily"
+  retention_days: 30
+  
+  backup_targets:
+    - "vectorstore_data"
+    - "configuration_files"
+    - "metrics_history"

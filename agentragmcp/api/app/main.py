@@ -1,159 +1,211 @@
 
 import os
+import asyncio
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.utils import get_openapi
+from fastapi.responses import JSONResponse
 
-from senfast.api.app.db import database
-from senfast.core.monitoring import setup_logging, add_request_id
-from senfast.core.config import get_settings
-# from senfast.core.routes import router
-# from senfast.api.app.routers import health, docs, info, metrics_route, data_sobreeixidors, data_taigua
-from senfast.api.app.routers import health, docs, info, metrics_route
-from senfast.api.app.routers import data_sobreeixidors, data_taigua
-from senfast.core.metrics import setup_metrics
-from fastapi import Request, HTTPException
+from agentragmcp.core.config import get_settings
+from agentragmcp.core.monitoring import setup_logging, add_request_id, logger
+from agentragmcp.core.exceptions import AgentRagMCPHTTPException
+from agentragmcp.api.app.routers import health, chat, admin
 
-# settings = get_settings()
+# Inicializar servicios globales (se hace lazy loading en los routers)
+settings = get_settings()
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Gestión del ciclo de vida de la aplicación"""
     # Startup
-    try:
-        database.POOL = database.create_connection_pool()
-        print("Pool de conexiones creado OK")
-    except Exception as e:
-        print(f"Error al crear el pool de conexiones: {e}")
-        # Lanzar excepción para evitar que la app arranque sin pool
-        raise RuntimeError("No se pudo crear el pool de conexiones, la aplicación no puede arrancar.") from e
-    yield
-    # Shutdown
-    if database.POOL:
-        try:
-            database.POOL.close()
-            print("Pool de conexiones cerrado correctamente")
-        except Exception as e:
-            print(f"Error al cerrar el pool de conexiones: {e}")
-
-def get_api() -> FastAPI:
-    """Return the FastAPI app, configured for the environment.
-
-    Add endpoint profiler or monitoring setup based on environment.
-    """
-    api = get_application()
+    logger.info("Iniciando AgentRagMCP...")
     
-    return api
+    try:
+        # Inicializar servicios MCP si están habilitados
+        if settings.MCP_ENABLED:
+            from agentragmcp.api.app.routers.chat import mcp_service
+            await mcp_service.start()
+            logger.info("Servicios MCP iniciados")
+        
+        logger.info("Aplicación iniciada correctamente")
+        
+    except Exception as e:
+        logger.error(f"Error durante el startup: {e}")
+        raise RuntimeError(f"No se pudo iniciar la aplicación: {e}") from e
+    
+    yield
+    
+    # Shutdown
+    logger.info("Cerrando AgentRagMCP...")
+    
+    try:
+        if settings.MCP_ENABLED:
+            from agentragmcp.api.app.routers.chat import mcp_service
+            await mcp_service.stop()
+            logger.info("Servicios MCP detenidos")
+            
+        logger.info("Aplicación cerrada correctamente")
+        
+    except Exception as e:
+        logger.error(f"Error durante el shutdown: {e}")
 
-def get_application() -> FastAPI:
-    """Get the FastAPI app instance, with settings."""
-    settings = get_settings()
-    _app = FastAPI(
+def create_application() -> FastAPI:
+    """Crea y configura la aplicación FastAPI"""
+    
+    app = FastAPI(
         title=settings.APP_NAME,
         description=settings.APP_DESCRIPTION,
         version=settings.APP_VERSION,
-        # license_info={
-        #     "name": "AGPL-3.0-only",
-        #     "url": "https://raw.githubusercontent.com/hotosm/fmtm/main/LICENSE.md",
-        # },
         debug=settings.DEBUG,
         lifespan=lifespan,
         root_path=settings.API_PREFIX,
-        # Desactivamos las rutas por defecto para personalizarlas
-        docs_url=None,
-        redoc_url=None,
-        openapi_url=None,        
-        # NOTE REST APIs should not have trailing slashes
+        # Personalizar documentación
+        docs_url="/docs" if not settings.is_production else None,
+        redoc_url="/redoc" if not settings.is_production else None,
+        openapi_url="/openapi.json" if not settings.is_production else None,
+        # No trailing slashes
         redirect_slashes=False,
     )
+    
+    # Configurar OpenAPI personalizado
     def custom_openapi():
-        if _app.openapi_schema:
-            return _app.openapi_schema
+        if app.openapi_schema:
+            return app.openapi_schema
+            
         openapi_schema = get_openapi(
-            title=_app.title,
-            version=_app.version,
-            description=_app.description,
-            routes=_app.routes,
+            title=app.title,
+            version=app.version,
+            description=app.description,
+            routes=app.routes,
         )
-        openapi_schema["servers"] = [{"url": "/senfast/api"}]
-        _app.openapi_schema = openapi_schema
-        return _app.openapi_schema
+        
+        # Personalizar esquema
+        openapi_schema["info"]["x-logo"] = {
+            "url": "/static/logo.png"
+        }
+        openapi_schema["servers"] = [
+            {"url": f"{settings.API_PREFIX}", "description": "API Server"}
+        ]
+        
+        app.openapi_schema = openapi_schema
+        return app.openapi_schema
     
-    _app.openapi = custom_openapi
-
-    # Set custom logger
-    logger = setup_logging()
-    _app.logger = logger
-    # Configurar métricas de Prometheus
-    setup_metrics(_app) 
-       
-    # Configuración CORS segura
-    if settings.ENVIRONMENT == "development":
-        # En desarrollo, usar configuración más permisiva
-        allowed_origins = settings.EXTRA_CORS_ORIGINS if settings.EXTRA_CORS_ORIGINS else ["*"]
-    else:
-        # En producción, ser más restrictivo
-        allowed_origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
-        # Si no hay configuración, usar un valor predeterminado seguro
-        if not allowed_origins or not allowed_origins[0]:
-            allowed_origins = ["https://example.com"]
+    app.openapi = custom_openapi
     
-    _app.add_middleware(
+    # Configurar logging
+    app_logger = setup_logging()
+    app.logger = app_logger
+    
+    # Configurar CORS
+    app.add_middleware(
         CORSMiddleware,
-        # allow_origins=settings.EXTRA_CORS_ORIGINS,
-        allow_origins = allowed_origins,
+        allow_origins=settings.CORS_ORIGINS,
         allow_credentials=True,
-        allow_methods=["*"],
+        allow_methods=["GET", "POST", "PUT", "DELETE"],
         allow_headers=["*"],
-        expose_headers=["Content-Disposition"],
+        expose_headers=["X-Request-ID"],
     )
-
+    
+    # Middleware para request ID
+    app.middleware("http")(add_request_id)
+    
+    # Montar archivos estáticos si existen
     static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
     if os.path.exists(static_dir):
-        _app.mount("/static", StaticFiles(directory=static_dir), name="static")
-
-    # Endpoints personalizados para documentación OpenAPI
-    # docs_router = APIRouter()
+        app.mount("/static", StaticFiles(directory=static_dir), name="static")
     
-
-    @_app.get("/")
+    # Manejador global de excepciones
+    @app.exception_handler(AgentRagMCPHTTPException)
+    async def agentragmcp_exception_handler(request: Request, exc: AgentRagMCPHTTPException):
+        """Manejador para excepciones específicas de AgentRagMCP"""
+        request_id = getattr(request.state, "request_id", "unknown")
+        
+        # Log según el nivel configurado
+        if exc.log_level == "error":
+            logger.error(f"Request {request_id} - {exc.detail}")
+        elif exc.log_level == "warning":
+            logger.warning(f"Request {request_id} - {exc.detail}")
+        
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={
+                "error": type(exc).__name__,
+                "message": exc.detail,
+                "request_id": request_id
+            },
+            headers=exc.headers
+        )
+    
+    @app.exception_handler(Exception)
+    async def general_exception_handler(request: Request, exc: Exception):
+        """Manejador para excepciones generales"""
+        request_id = getattr(request.state, "request_id", "unknown")
+        
+        logger.error(f"Request {request_id} - Error no manejado: {str(exc)}", exc_info=True)
+        
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "InternalServerError",
+                "message": "Error interno del servidor",
+                "request_id": request_id
+            }
+        )
+    
+    # Endpoint raíz
+    @app.get("/", include_in_schema=False)
     async def root(request: Request):
-        if hasattr(_app, 'logger') and _app.logger:
-            _app.logger.info(f"Request ID: {request.state.request_id} - Acceso a endpoint raíz")
+        """Endpoint de información básica"""
+        request_id = getattr(request.state, "request_id", "unknown")
+        logger.info(f"Request {request_id} - Acceso a endpoint raíz")
+        
         return {
-            "message": f"API de {_app.title} / {_app.version}",
-            "docs": "/docs",
-            "redoc": "/redoc", 
-            "health_check": "/health"
-            } 
+            "service": app.title,
+            "version": app.version,
+            "status": "running",
+            "description": "Asistente IA especializado en plantas con múltiples RAGs",
+            "endpoints": {
+                "health": "/health",
+                "chat": "/chat",
+                "docs": "/docs" if not settings.is_production else "disabled",
+                "admin": "/admin" if not settings.is_production else "restricted"
+            },
+            "request_id": request_id
+        }
     
-    @_app.get('/favicon.ico', include_in_schema=False)
+    # Favicon
+    @app.get("/favicon.ico", include_in_schema=False)
     async def favicon():
-        from fastapi.responses import FileResponse
-        favicon_path = os.path.join(static_dir, "favicon.ico")
-        if os.path.exists(favicon_path):
+        """Servir favicon"""
+        favicon_path = os.path.join(static_dir, "favicon.ico") if os.path.exists(static_dir) else None
+        if favicon_path and os.path.exists(favicon_path):
+            from fastapi.responses import FileResponse
             return FileResponse(favicon_path)
         else:
-            raise HTTPException(status_code=404)  
+            raise HTTPException(status_code=404, detail="Favicon not found")
+    
+    # Incluir routers
+    app.include_router(health.router)
+    app.include_router(chat.router)
+    
+    # Router de admin solo en desarrollo o con autenticación
+    if not settings.is_production or os.getenv("ENABLE_ADMIN", "false").lower() == "true":
+        app.include_router(admin.router)
+    
+    return app
 
-    _app.middleware("http")(add_request_id)
-    # _app.include_router(docs_router, prefix="/api")
-    _app.include_router(health.router)
-    _app.include_router(docs.router)
-    _app.include_router(info.router)
-    _app.include_router(metrics_route.router)
-    # _app.include_router(data_taigua.router)
-    # _app.include_router(data_sobreeixidors.router)
-    _app.include_router(data_taigua.router)
-    _app.include_router(data_sobreeixidors.router)    
-    # _app.include_router(router)
-    # for router in [health.router, metrics.router, docs.router, info.router, data_barris.router]:
-    #     _app.include_router(router)
-
-    return _app
-
-app = get_api()
+# Crear la aplicación
+app = create_application()
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("senfast.api.app.main:app", host="localhost", port=8000, reload=True)
+    
+    uvicorn.run(
+        "agentragmcp.api.app.main:app",
+        host=settings.API_HOST,
+        port=settings.API_PORT,
+        reload=settings.DEBUG,
+        log_level=settings.LOG_LEVEL.lower()
+    )

@@ -7,9 +7,9 @@ from abc import ABC, abstractmethod
 import httpx
 from pydantic import BaseModel
 
-from chatplants.core.config import get_settings
-from chatplants.core.monitoring import logger, get_logger_with_context
-from chatplants.core.exceptions import (
+from agentragmcp.core.config import get_settings
+from agentragmcp.core.monitoring import logger, get_logger_with_context
+from agentragmcp.core.exceptions import (
     MCPError, 
     MCPServerNotFoundError, 
     MCPConnectionError

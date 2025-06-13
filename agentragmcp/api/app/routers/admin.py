@@ -40,7 +40,7 @@ async def get_system_info(token: str = Depends(verify_admin_token)):
         settings = get_settings()
         
         system_info = {
-            "service": "chatplants",
+            "service": "agentragmcp",
             "version": settings.APP_VERSION,
             "environment": settings.ENVIRONMENT,
             "configuration": {
@@ -198,7 +198,7 @@ async def delete_session(
 ):
     """Elimina una sesión específica"""
     try:
-        from chatplants.api.app.routers.chat import rag_service
+        from agentragmcp.api.app.routers.chat import rag_service
         
         if session_id not in rag_service.chat_histories:
             raise HTTPException(status_code=404, detail=f"Sesión '{session_id}' no encontrada")

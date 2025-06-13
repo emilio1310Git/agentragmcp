@@ -1,20 +1,44 @@
-El tomate (Solanum lycopersicum) es una hortaliza fundamental en la huerta.
+# Cuidados del Tomate (Solanum lycopersicum)
 
-SIEMBRA:
-- Época: final del invierno en semillero protegido
-- Trasplante: cuando no haya riesgo de heladas
-- Marco de plantación: 40x60 cm
+## Introducción
+El tomate es una de las hortalizas más cultivadas en el mundo. Requiere cuidados específicos para obtener una producción óptima y frutos de calidad.
 
-CUIDADOS:
-- Riego: constante y uniforme, evitar mojar las hojas
-- Tutorado: indispensable para variedades indeterminadas
-- Poda: eliminar chupones y hojas inferiores
+## Preparación del Suelo
+- pH ideal: 6.0-6.8
+- Materia orgánica: Incorporar compost o estiércol maduro
+- Drenaje: Fundamental para evitar enfermedades radiculares
+- Profundidad de laboreo: 25-30 cm
 
-NUTRICIÓN:
-- Compost bien maduro antes de la plantación
-- Fertilización rica en potasio durante la fructificación
-- Evitar exceso de nitrógeno
+## Siembra y Trasplante
+- Semillero: Febrero-marzo en zona templada
+- Trasplante: Cuando las plantas tengan 15-20 cm
+- Marco de plantación: 40x80 cm
+- Profundidad: Enterrar hasta las primeras hojas verdaderas
 
-COSECHA:
-- Los frutos se recolectan cuando empiezan a cambiar de color
-- Conservación: lugar fresco y ventilado
+## Riego
+- Frecuencia: Regular y constante
+- Cantidad: 2-3 litros por planta y riego
+- Método: Por goteo o surcos, evitar mojar hojas
+- Mulching: Recomendado para conservar humedad
+
+## Entutorado
+- Sistemas: Caña, espalderas o mallas
+- Altura: Mínimo 1.5 metros
+- Atado: Con rafia o clips especiales
+- Momento: Desde el trasplante
+
+## Poda
+- Destallado: Eliminar brotes axilares semanalmente
+- Deshojado: Quitar hojas inferiores progresivamente
+- Despunte: Cortar el ápice cuando alcance la altura deseada
+
+## Fertilización
+- Base: Fósforo y potasio antes del trasplante
+- Cobertera: Nitrógeno fraccionado durante el cultivo
+- Microelementos: Especial atención a calcio y magnesio
+
+## Problemas Comunes
+- Podredumbre apical: Falta de calcio
+- Agrietado: Riego irregular
+- Plagas: Mosca blanca, trips, ácaros
+- Enfermedades: Mildiu, alternaria, fusarium

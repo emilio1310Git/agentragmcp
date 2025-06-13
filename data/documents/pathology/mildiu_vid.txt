@@ -1,27 +1,48 @@
-El mildiu de la vid (Plasmopara viticola) es una de las enfermedades más graves de la viticultura.
+# Mildiu de la Vid (Plasmopara viticola)
 
-SÍNTOMAS:
-- Manchas amarillentas en el haz de las hojas
-- Pelusilla blanquecina en el envés
-- Necrosis y defoliación en casos severos
-- Afectación de racimos jóvenes
+## Descripción
+El mildiu es una de las enfermedades más destructivas de la vid, causada por el oomiceto Plasmopara viticola. Afecta principalmente hojas, racimos y brotes jóvenes.
 
-CONDICIONES FAVORABLES:
-- Humedad relativa alta (>95%)
-- Temperaturas entre 20-25°C
-- Precipitaciones frecuentes
-- Rocío matutino prolongado
+## Síntomas
+### En Hojas
+- Manchas amarillentas traslúcidas (manchas de aceite)
+- En el envés: pelusilla blanca característica
+- Necrosis y defoliación en casos graves
 
-CONTROL PREVENTIVO:
-- Poda que favorezca la ventilación
+### En Racimos
+- Granos pardos y arrugados
+- Podredumbre seca en uvas jóvenes
+- Pérdida total del racimo en ataques severos
+
+### En Brotes
+- Lesiones necróticas
+- Deformaciones y acortamiento de entrenudos
+
+## Condiciones Favorables
+- Temperatura: 20-25°C óptima
+- Humedad: Superior al 95%
+- Agua libre: Necesaria para la germinación
+- Lluvias frecuentes en primavera-verano
+
+## Ciclo de la Enfermedad
+1. **Invernación**: Oosporas en hojas caídas
+2. **Infección primaria**: Abril-mayo con lluvias
+3. **Infecciones secundarias**: Mayo-agosto
+4. **Formación de oosporas**: Agosto-septiembre
+
+## Tratamientos Preventivos
+- Cobre: Tratamientos de invierno
+- Fungicidas sistémicos: Metalaxil, fosetil-Al
+- Fungicidas de contacto: Mancozeb, propineb
+- Calendarios de tratamiento según riesgo
+
+## Medidas Culturales
+- Poda adecuada para ventilación
 - Eliminación de restos vegetales
-- Tratamientos preventivos con cobre
+- Drenaje correcto del suelo
+- Variedades resistentes
 
-CONTROL QUÍMICO:
-- Fungicidas sistémicos (fosfonatos)
-- Fungicidas de contacto (cobre, mancozeb)
-- Alternar materias activas para evitar resistencias
-
-MOMENTO DE APLICACIÓN:
-- Preventivo antes de lluvias
-- Estadios críticos: brotación, floración, envero
+## Umbrales de Tratamiento
+- Modelo Mills: Suma de grados día después de lluvia
+- Regla de los 3-10: 3 días consecutivos con T>10°C tras 10mm lluvia
+- Monitoreo de esporas en aire

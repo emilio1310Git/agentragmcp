@@ -1,33 +1,67 @@
-La fotosíntesis es el proceso fundamental por el cual las plantas convierten la energía lumínica en energía química.
+# La Fotosíntesis: Proceso Fundamental de la Vida
 
-DEFINICIÓN:
-La fotosíntesis es el proceso mediante el cual las plantas utilizan la luz solar, el dióxido de carbono y el agua para producir glucosa y oxígeno.
+## Definición
+La fotosíntesis es el proceso biológico mediante el cual las plantas, algas y algunas bacterias convierten la energía solar, el dióxido de carbono y el agua en glucosa y oxígeno, utilizando la clorofila como pigmento principal.
 
-ECUACIÓN GENERAL:
-6CO₂ + 6H₂O + energía lumínica → C₆H₁₂O₆ + 6O₂
+## Ecuación General
+6CO₂ + 6H₂O + energía solar → C₆H₁₂O₆ + 6O₂
 
-FASES DEL PROCESO:
+## Fases de la Fotosíntesis
 
-1. FASE LUMINOSA (Tilacoides):
-- Captura de luz por las clorofilas
-- Fotólisis del agua
+### Fase Luminosa (Reacciones de Hill)
+**Localización**: Tilacoides de los cloroplastos
+**Procesos**:
+- Captación de luz por fotosistemas I y II
+- Fotólisis del agua (H₂O → 2H⁺ + ½O₂ + 2e⁻)
+- Transporte de electrones
 - Síntesis de ATP y NADPH
 - Liberación de oxígeno
 
-2. FASE OSCURA (Estroma):
-- Ciclo de Calvin-Benson
-- Fijación del CO₂
+### Fase Oscura (Ciclo de Calvin-Benson)
+**Localización**: Estroma de los cloroplastos
+**Procesos**:
+- Fijación de CO₂ por la RuBisCO
+- Formación de compuestos de 3 carbonos
+- Regeneración de la ribulosa 1,5-bifosfato
 - Síntesis de glucosa
-- Regeneración de RuBP
 
-IMPORTANCIA:
+## Factores que Afectan la Fotosíntesis
+
+### Factores Internos
+- Concentración de clorofila
+- Edad de las hojas
+- Estado nutricional de la planta
+- Estructura del aparato fotosintético
+
+### Factores Externos
+- **Intensidad lumínica**: Factor limitante principal
+- **Temperatura**: Óptimo entre 20-30°C
+- **Concentración de CO₂**: Actual ~400 ppm
+- **Disponibilidad de agua**: Necesaria para reacciones
+
+## Importancia Biológica
 - Producción de oxígeno atmosférico
-- Base de las cadenas alimentarias
-- Fijación de carbono atmosférico
-- Fuente de energía para la biosfera
+- Base de todas las cadenas alimentarias
+- Almacenamiento de energía en compuestos orgánicos
+- Regulación del CO₂ atmosférico
+- Formación de biomasa vegetal
 
-FACTORES LIMITANTES:
-- Intensidad lumínica
+## Tipos de Fotosíntesis
+
+### Plantas C3
+- 85% de las plantas
+- Fijación directa de CO₂
+- Eficiente en climas templados
+- Ejemplos: trigo, arroz, soja
+
+### Plantas C4
+- Adaptadas a climas cálidos
 - Concentración de CO₂
-- Temperatura
-- Disponibilidad de agua
+- Mayor eficiencia en temperatura alta
+- Ejemplos: maíz, caña de azúcar
+
+### Plantas CAM
+- Metabolismo Ácido de las Crasuláceas
+- Apertura estomática nocturna
+- Adaptación a ambientes áridos
+- Ejemplos: cactus, piña, agave

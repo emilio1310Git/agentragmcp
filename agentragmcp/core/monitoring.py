@@ -15,9 +15,18 @@ class RequestIDFilter(logging.Filter):
     """Filtro para inyectar un ID de request único en cada registro de log."""
     
     def filter(self, record):
+        # Asegurar que TODOS los campos requeridos están presentes
         record.request_id = getattr(record, 'request_id', 'NO_REQUEST_ID')
         record.agent_type = getattr(record, 'agent_type', 'UNKNOWN')
         record.topic = getattr(record, 'topic', 'UNKNOWN')
+        record.chat_session_id = getattr(record, 'chat_session_id', 'NO_SESSION')
+        
+        # Crear session corto para el formatter
+        if hasattr(record, 'chat_session_id') and record.chat_session_id != 'NO_SESSION':
+            record.session = record.chat_session_id[:8] if len(record.chat_session_id) > 8 else record.chat_session_id
+        else:
+            record.session = 'NO_SESSION'
+            
         return True
 
 class AgentRagMCPFormatter(logging.Formatter):

@@ -15,7 +15,6 @@ from agentragmcp.core.exceptions import (
     handle_langchain_error
 )
 from agentragmcp.api.app.services.rag_service import RAGService
-
 class BaseAgent(ABC):
     """Clase base abstracta para todos los agentes"""
     
@@ -418,80 +417,81 @@ class AgentService:
         
         logger.info(f"AgentService inicializado con {len(self.agents)} agentes")
     
-    def process_question(
-        self, 
-        question: str, 
-        session_id: str,
-        agent_type: Optional[str] = None,
-        **kwargs
-    ) -> Tuple[str, Dict[str, Any]]:
-        """
-        Procesa una pregunta seleccionando automáticamente el agente apropiado
-        
-        Args:
-            question: Pregunta del usuario
-            session_id: ID de la sesión
-            agent_type: Tipo específico de agente (opcional)
-            **kwargs: Argumentos adicionales
+    async def process_question(
+            self, 
+            question: str, 
+            session_id: str,
+            agent_type: Optional[str] = None,
+            **kwargs
+        ) -> Tuple[str, Dict[str, Any]]:
+            """
+            Procesa una pregunta seleccionando automáticamente el agente apropiado
             
-        Returns:
-            Tuple[str, Dict]: (respuesta, metadatos)
-        """
-        start_time = time.time()
-        context_logger = get_logger_with_context(chat_session_id=session_id)
-        
-        try:
-            # Si se especifica un agente, usarlo directamente
-            if agent_type:
-                if agent_type not in self.agents:
-                    raise AgentNotFoundError(agent_type)
+            Args:
+                question: Pregunta del usuario
+                session_id: ID de la sesión
+                agent_type: Tipo específico de agente (opcional)
+                **kwargs: Argumentos adicionales
                 
-                selected_agent = self.agents[agent_type]
-                confidence = 1.0  # Confianza máxima para selección manual
-                context_logger.info(f"Usando agente especificado: {agent_type}")
-            else:
-                # Selección automática
-                available_agents = list(self.agents.values())
-                selected_agent, confidence = self.selector.select_agent(
-                    question, 
-                    available_agents,
-                    kwargs.get("context")
+            Returns:
+                Tuple[str, Dict]: (respuesta, metadatos)
+            """
+            start_time = time.time()
+            context_logger = get_logger_with_context(chat_session_id=session_id)
+            
+            try:
+                # Si se especifica un agente, usarlo directamente
+                if agent_type:
+                    if agent_type not in self.agents:
+                        raise AgentNotFoundError(agent_type)
+                    
+                    selected_agent = self.agents[agent_type]
+                    confidence = 1.0  # Confianza máxima para selección manual
+                    context_logger.info(f"Usando agente especificado: {agent_type}")
+                else:
+                    # Selección automática
+                    available_agents = list(self.agents.values())
+                    selected_agent, confidence = self.selector.select_agent(
+                        question, 
+                        available_agents,
+                        kwargs.get("context")
+                    )
+                    context_logger.info(f"Agente seleccionado automáticamente: {selected_agent.name} (confianza: {confidence:.3f})")
+                
+                # Procesar la pregunta con el agente seleccionado
+                # NOTA: Los métodos process de los agentes no son async, por eso no usamos await aquí
+                answer, metadata = selected_agent.process(
+                    question=question,
+                    session_id=session_id,
+                    **kwargs
                 )
-                context_logger.info(f"Agente seleccionado automáticamente: {selected_agent.name} (confianza: {confidence:.3f})")
-            
-            # Procesar la pregunta con el agente seleccionado
-            answer, metadata = selected_agent.process(
-                question=question,
-                session_id=session_id,
-                **kwargs
-            )
-            
-            # Agregar información de selección a los metadatos
-            metadata.update({
-                "agent_selection_confidence": confidence,
-                "agent_selection_method": "manual" if agent_type else "automatic",
-                "total_processing_time": time.time() - start_time
-            })
-            
-            return answer, metadata
-            
-        except Exception as e:
-            processing_time = time.time() - start_time
-            context_logger.error(f"Error procesando pregunta: {e}")
-            
-            # Log de métricas de error
-            chat_metrics.log_chat_interaction(
-                session_id=session_id,
-                question=question,
-                agent_type=agent_type or "auto",
-                topic="unknown",
-                response_time=processing_time,
-                success=False,
-                error=str(e)
-            )
-            
-            raise
-    
+                
+                # Agregar información de selección a los metadatos
+                metadata.update({
+                    "agent_selection_confidence": confidence,
+                    "agent_selection_method": "manual" if agent_type else "automatic",
+                    "total_processing_time": time.time() - start_time
+                })
+                
+                return answer, metadata
+                
+            except Exception as e:
+                processing_time = time.time() - start_time
+                context_logger.error(f"Error procesando pregunta: {e}")
+                
+                # Log de métricas de error
+                chat_metrics.log_chat_interaction(
+                    session_id=session_id,
+                    question=question,
+                    agent_type=agent_type or "auto",
+                    topic="unknown",
+                    response_time=processing_time,
+                    success=False,
+                    error=str(e)
+                )
+                
+                raise
+
     def get_available_agents(self) -> List[Dict[str, Any]]:
         """Devuelve información de los agentes disponibles"""
         return [

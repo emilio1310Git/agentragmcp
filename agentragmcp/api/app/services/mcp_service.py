@@ -91,7 +91,7 @@ class HTTPMCPClient(BaseMCPClient):
                         "tools": {}
                     },
                     "clientInfo": {
-                        "name": "chatplants",
+                        "name": "agentragmcp",
                         "version": "2.0.0"
                     }
                 }

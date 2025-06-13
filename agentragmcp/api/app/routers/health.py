@@ -16,7 +16,7 @@ async def healthcheck():
     """Health check básico del servicio"""
     return {
         "status": "healthy",
-        "service": "chatplants",
+        "service": "agentragmcp",
         "version": get_settings().APP_VERSION,
         "uptime": time.time() - start_time
     }
@@ -55,7 +55,7 @@ async def detailed_health_check():
         
         health_data = {
             "status": overall_status,
-            "service": "chatplants",
+            "service": "agentragmcp",
             "version": settings.APP_VERSION,
             "environment": settings.ENVIRONMENT,
             "uptime": uptime,
@@ -82,7 +82,7 @@ async def detailed_health_check():
         
         error_response = {
             "status": "unhealthy",
-            "service": "chatplants",
+            "service": "agentragmcp",
             "version": get_settings().APP_VERSION,
             "error": str(e),
             "uptime": time.time() - start_time
@@ -175,7 +175,7 @@ async def liveness_check():
     """
     return {
         "alive": True,
-        "service": "chatplants", 
+        "service": "agentragmcp", 
         "uptime": time.time() - start_time,
         "timestamp": time.time()
     }

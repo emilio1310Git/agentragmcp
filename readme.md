@@ -2,7 +2,7 @@
 
 **Asistente IA especializado en plantas con múltiples RAGs y sistema de agentes**
 
-AgentRagMCP es una evolución avanzada del sistema ChatPlants que implementa un enfoque multi-agente con múltiples RAGs (Retrieval-Augmented Generation) especializados. El sistema selecciona automáticamente el agente más apropiado según la consulta del usuario, proporcionando respuestas especializadas y precisas sobre diferentes aspectos del mundo vegetal.
+AgentRagMCP es una evolución avanzada del sistema agentragmcp que implementa un enfoque multi-agente con múltiples RAGs (Retrieval-Augmented Generation) especializados. El sistema selecciona automáticamente el agente más apropiado según la consulta del usuario, proporcionando respuestas especializadas y precisas sobre diferentes aspectos del mundo vegetal.
 
 ## 🎯 Características Principales
 

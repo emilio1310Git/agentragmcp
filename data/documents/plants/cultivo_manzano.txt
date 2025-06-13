@@ -1,21 +1,33 @@
-El manzano (Malus domestica) es uno de los frutales más cultivados del mundo.
+# Cultivo del Manzano (Malus domestica)
 
-CARACTERÍSTICAS:
-- Árbol de porte medio que puede alcanzar 8-10 metros de altura
-- Flores blancas o rosadas que aparecen en primavera
-- Frutos comestibles de diversas variedades
+## Características Generales
+El manzano es un árbol frutal de la familia Rosaceae, originario de Asia Central. Es uno de los frutales más cultivados en el mundo debido a su adaptabilidad y la calidad de sus frutos.
 
-CUIDADOS:
-- Riego regular pero sin encharcamiento
-- Poda de formación en invierno
-- Fertilización en primavera con compost
+## Requerimientos Climáticos
+- Temperatura: Requiere entre 600-1200 horas frío (temperaturas por debajo de 7°C)
+- Precipitación: 600-800 mm anuales bien distribuidos
+- Altitud: Se desarrolla bien entre 0-2000 metros sobre el nivel del mar
+- Exposición: Prefiere lugares soleados con buena ventilación
 
-CULTIVO:
-- Plantación: otoño o inicio de primavera
-- Exposición: sol o semisombra
-- Suelo: bien drenado, pH 6.0-7.0
+## Suelo
+- pH óptimo: 6.0-7.0 (ligeramente ácido a neutro)
+- Drenaje: Excelente, no tolera encharcamientos
+- Textura: Franco-arcillosos o franco-arenosos
+- Profundidad: Mínimo 80 cm para un buen desarrollo radicular
 
-VARIEDADES RECOMENDADAS:
-- Golden Delicious: resistente y productiva
-- Granny Smith: ideal para climas templados
-- Fuji: excelente sabor y conservación
+## Plantación
+- Época: Finales de invierno o inicio de primavera
+- Marco de plantación: 4x4 metros en cultivo tradicional, 2x1 en intensivo
+- Preparación del hoyo: 60x60x60 cm
+- Abonado de fondo: Estiércol maduro + fósforo
+
+## Cuidados
+- Riego: Regular pero sin encharcamiento
+- Poda: Formación en los primeros años, luego poda de fructificación
+- Fertilización: NPK equilibrado según análisis de suelo
+- Tratamientos: Preventivos contra plagas y enfermedades
+
+## Cosecha
+- Tiempo: 3-5 años desde la plantación
+- Época: Agosto-octubre según variedad
+- Indicadores: Color, facilidad de desprendimiento, sabor

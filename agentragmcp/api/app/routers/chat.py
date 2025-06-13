@@ -22,7 +22,7 @@ from agentragmcp.core.exceptions import (
     InvalidTopicError,
     AgentNotFoundError,
     ValidationError,
-    ChatPlantsHTTPException
+    AgentRagMCPHTTPException
 )
 
 # Inicialización de servicios globales
@@ -120,7 +120,7 @@ async def chat(
         
         return chat_response
         
-    except ChatPlantsHTTPException:
+    except AgentRagMCPHTTPException:
         # Re-lanzar excepciones HTTP específicas
         raise
     except Exception as e:

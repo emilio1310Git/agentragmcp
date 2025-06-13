@@ -2,598 +2,677 @@
 """
 Script para procesar documentos y crear vectorstores para AgentRagMCP
 """
+
 import os
-import sys
 import argparse
-import logging
+import sys
 from pathlib import Path
 from typing import List, Dict, Any
-import shutil
 
-# Añadir el directorio raíz al path
-root_dir = Path(__file__).parent.parent
-sys.path.insert(0, str(root_dir))
+# Añadir el directorio raíz al PYTHONPATH
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
 
-# Imports de LangChain
-from langchain_community.document_loaders import (
-    DirectoryLoader,
-    PyPDFLoader,
-    TextLoader,
-    UnstructuredMarkdownLoader,
-    Docx2txtLoader,
-    UnstructuredHTMLLoader
-)
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.document_loaders import TextLoader, DirectoryLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
 from langchain_ollama import OllamaEmbeddings
-from langchain.schema import Document
 
 from agentragmcp.core.config import get_settings
-from agentragmcp.core.monitoring import setup_logging
+from agentragmcp.core.monitoring import logger
 
 class DocumentProcessor:
     """Procesador de documentos para crear vectorstores"""
     
-    def __init__(self, base_path: str = None):
+    def __init__(self):
         self.settings = get_settings()
-        self.logger = setup_logging()
-        
-        if base_path:
-            self.base_path = Path(base_path)
-        else:
-            self.base_path = Path.cwd()
-        
-        self.documents_path = self.base_path / "data" / "documents"
-        self.vectorstores_path = Path(self.settings.VECTORSTORE_BASE_PATH)
-        
-        # Configuración de embeddings
-        self.embeddings = OllamaEmbeddings(
-            model=self.settings.EMBEDDING_MODEL,
-            base_url=self.settings.LLM_BASE_URL
-        )
-        
-        # Configuración de text splitter
-        self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000,
-            chunk_overlap=200,
-            length_function=len,
-            separators=["\n\n", "\n", ". ", " ", ""]
-        )
-        
+        self.embeddings = None
+        self._initialize_embeddings()
+    
+    def _initialize_embeddings(self):
+        """Inicializa el modelo de embeddings"""
+        try:
+            self.embeddings = OllamaEmbeddings(
+                model=self.settings.EMBEDDING_MODEL,
+                base_url=self.settings.LLM_BASE_URL
+            )
+            logger.info(f"Embeddings inicializados: {self.settings.EMBEDDING_MODEL}")
+        except Exception as e:
+            logger.error(f"Error inicializando embeddings: {e}")
+            raise
+    
     def setup_directories(self):
-        """Crea la estructura de directorios necesaria"""
+        """Crea los directorios necesarios"""
         directories = [
-            self.documents_path / "plants",
-            self.documents_path / "pathology", 
-            self.documents_path / "general",
-            self.vectorstores_path / "plants",
-            self.vectorstores_path / "pathology",
-            self.vectorstores_path / "general"
+            "data/documents/plants",
+            "data/documents/pathology", 
+            "data/documents/general",
+            "data/vectorstores/plants",
+            "data/vectorstores/pathology",
+            "data/vectorstores/general"
         ]
         
         for directory in directories:
-            directory.mkdir(parents=True, exist_ok=True)
-            self.logger.info(f"Directorio creado/verificado: {directory}")
-    
-    def get_loader_for_file(self, file_path: Path):
-        """Obtiene el loader apropiado según la extensión del archivo"""
-        extension = file_path.suffix.lower()
-        
-        loaders = {
-            '.pdf': PyPDFLoader,
-            '.txt': TextLoader,
-            '.md': UnstructuredMarkdownLoader,
-            '.docx': Docx2txtLoader,
-            '.html': UnstructuredHTMLLoader,
-            '.htm': UnstructuredHTMLLoader
-        }
-        
-        if extension in loaders:
-            return loaders[extension](str(file_path))
-        else:
-            self.logger.warning(f"Extensión no soportada: {extension}")
-            return None
-    
-    def load_documents_from_directory(self, directory: Path, topic: str) -> List[Document]:
-        """Carga documentos desde un directorio específico"""
-        self.logger.info(f"Cargando documentos desde: {directory}")
-        
-        documents = []
-        supported_extensions = ['.pdf', '.txt', '.md', '.docx', '.html', '.htm']
-        
-        for file_path in directory.rglob("*"):
-            if file_path.is_file() and file_path.suffix.lower() in supported_extensions:
-                try:
-                    loader = self.get_loader_for_file(file_path)
-                    if loader:
-                        file_docs = loader.load()
-                        
-                        # Añadir metadatos
-                        for doc in file_docs:
-                            doc.metadata.update({
-                                'source': str(file_path.relative_to(directory)),
-                                'topic': topic,
-                                'file_type': file_path.suffix,
-                                'full_path': str(file_path)
-                            })
-                        
-                        documents.extend(file_docs)
-                        self.logger.info(f"Cargado: {file_path.name} ({len(file_docs)} docs)")
-                        
-                except Exception as e:
-                    self.logger.error(f"Error cargando {file_path}: {e}")
-        
-        self.logger.info(f"Total documentos cargados para {topic}: {len(documents)}")
-        return documents
-    
-    def process_documents(self, documents: List[Document]) -> List[Document]:
-        """Procesa y divide documentos en chunks"""
-        self.logger.info(f"Procesando {len(documents)} documentos...")
-        
-        # Filtrar documentos vacíos
-        valid_docs = [doc for doc in documents if doc.page_content.strip()]
-        
-        if len(valid_docs) != len(documents):
-            self.logger.warning(f"Filtrados {len(documents) - len(valid_docs)} documentos vacíos")
-        
-        # Dividir en chunks
-        chunks = self.text_splitter.split_documents(valid_docs)
-        
-        self.logger.info(f"Documentos divididos en {len(chunks)} chunks")
-        return chunks
-    
-    def create_vectorstore(self, documents: List[Document], topic: str, force_recreate: bool = False) -> Chroma:
-        """Crea o actualiza un vectorstore para una temática específica"""
-        vectorstore_path = self.vectorstores_path / topic
-        
-        # Verificar si ya existe
-        if vectorstore_path.exists() and force_recreate:
-            self.logger.info(f"Eliminando vectorstore existente: {vectorstore_path}")
-            shutil.rmtree(vectorstore_path)
-        
-        try:
-            if documents:
-                self.logger.info(f"Creando vectorstore para {topic} con {len(documents)} documentos...")
-                
-                vectorstore = Chroma.from_documents(
-                    documents=documents,
-                    embedding=self.embeddings,
-                    persist_directory=str(vectorstore_path),
-                    collection_name=f"{topic}_collection"
-                )
-                
-                self.logger.info(f"Vectorstore creado exitosamente: {vectorstore_path}")
-                return vectorstore
-            else:
-                self.logger.warning(f"No hay documentos para crear vectorstore de {topic}")
-                return None
-                
-        except Exception as e:
-            self.logger.error(f"Error creando vectorstore para {topic}: {e}")
-            raise
-    
-    def validate_vectorstore(self, topic: str) -> bool:
-        """Valida que un vectorstore funcione correctamente"""
-        try:
-            vectorstore_path = self.vectorstores_path / topic
-            
-            if not vectorstore_path.exists():
-                self.logger.error(f"Vectorstore no existe: {vectorstore_path}")
-                return False
-            
-            # Cargar y probar el vectorstore
-            vectorstore = Chroma(
-                persist_directory=str(vectorstore_path),
-                embedding_function=self.embeddings,
-                collection_name=f"{topic}_collection"
-            )
-            
-            # Hacer una consulta de prueba
-            results = vectorstore.similarity_search("test query", k=1)
-            
-            self.logger.info(f"Vectorstore {topic} validado: {len(results)} resultados")
-            return True
-            
-        except Exception as e:
-            self.logger.error(f"Error validando vectorstore {topic}: {e}")
-            return False
-    
-    def process_topic(self, topic: str, force_recreate: bool = False) -> bool:
-        """Procesa todos los documentos de una temática específica"""
-        self.logger.info(f"{'='*50}")
-        self.logger.info(f"PROCESANDO TEMÁTICA: {topic.upper()}")
-        self.logger.info(f"{'='*50}")
-        
-        topic_path = self.documents_path / topic
-        
-        if not topic_path.exists():
-            self.logger.warning(f"Directorio no existe: {topic_path}")
-            return False
-        
-        # Verificar si hay documentos
-        files = list(topic_path.rglob("*"))
-        document_files = [f for f in files if f.is_file() and f.suffix.lower() in ['.pdf', '.txt', '.md', '.docx', '.html']]
-        
-        if not document_files:
-            self.logger.warning(f"No se encontraron documentos en: {topic_path}")
-            return False
-        
-        self.logger.info(f"Encontrados {len(document_files)} archivos para procesar")
-        
-        try:
-            # 1. Cargar documentos
-            documents = self.load_documents_from_directory(topic_path, topic)
-            
-            if not documents:
-                self.logger.warning(f"No se pudieron cargar documentos para {topic}")
-                return False
-            
-            # 2. Procesar documentos
-            chunks = self.process_documents(documents)
-            
-            if not chunks:
-                self.logger.warning(f"No se generaron chunks para {topic}")
-                return False
-            
-            # 3. Crear vectorstore
-            vectorstore = self.create_vectorstore(chunks, topic, force_recreate)
-            
-            if not vectorstore:
-                return False
-            
-            # 4. Validar
-            is_valid = self.validate_vectorstore(topic)
-            
-            if is_valid:
-                self.logger.info(f"✅ Temática {topic} procesada exitosamente")
-            else:
-                self.logger.error(f"❌ Error validando temática {topic}")
-            
-            return is_valid
-            
-        except Exception as e:
-            self.logger.error(f"Error procesando temática {topic}: {e}")
-            return False
+            abs_path = os.path.abspath(directory)
+            os.makedirs(abs_path, exist_ok=True)
+            logger.info(f"Directorio creado/verificado: {abs_path}")
     
     def create_sample_documents(self):
         """Crea documentos de ejemplo para testing"""
-        self.logger.info("Creando documentos de ejemplo...")
+        logger.info("Creando documentos de ejemplo...")
         
-        sample_docs = {
-            "plants": {
-                "cultivo_manzano.txt": """
-El manzano (Malus domestica) es uno de los frutales más cultivados del mundo.
+        # Documentos de plantas
+        plants_docs = {
+            "cultivo_manzano.txt": """# Cultivo del Manzano (Malus domestica)
 
-CARACTERÍSTICAS:
-- Árbol de porte medio que puede alcanzar 8-10 metros de altura
-- Flores blancas o rosadas que aparecen en primavera
-- Frutos comestibles de diversas variedades
+## Características Generales
+El manzano es un árbol frutal de la familia Rosaceae, originario de Asia Central. Es uno de los frutales más cultivados en el mundo debido a su adaptabilidad y la calidad de sus frutos.
 
-CUIDADOS:
-- Riego regular pero sin encharcamiento
-- Poda de formación en invierno
-- Fertilización en primavera con compost
+## Requerimientos Climáticos
+- Temperatura: Requiere entre 600-1200 horas frío (temperaturas por debajo de 7°C)
+- Precipitación: 600-800 mm anuales bien distribuidos
+- Altitud: Se desarrolla bien entre 0-2000 metros sobre el nivel del mar
+- Exposición: Prefiere lugares soleados con buena ventilación
 
-CULTIVO:
-- Plantación: otoño o inicio de primavera
-- Exposición: sol o semisombra
-- Suelo: bien drenado, pH 6.0-7.0
+## Suelo
+- pH óptimo: 6.0-7.0 (ligeramente ácido a neutro)
+- Drenaje: Excelente, no tolera encharcamientos
+- Textura: Franco-arcillosos o franco-arenosos
+- Profundidad: Mínimo 80 cm para un buen desarrollo radicular
 
-VARIEDADES RECOMENDADAS:
-- Golden Delicious: resistente y productiva
-- Granny Smith: ideal para climas templados
-- Fuji: excelente sabor y conservación
-                """,
-                
-                "cuidados_tomate.txt": """
-El tomate (Solanum lycopersicum) es una hortaliza fundamental en la huerta.
+## Plantación
+- Época: Finales de invierno o inicio de primavera
+- Marco de plantación: 4x4 metros en cultivo tradicional, 2x1 en intensivo
+- Preparación del hoyo: 60x60x60 cm
+- Abonado de fondo: Estiércol maduro + fósforo
 
-SIEMBRA:
-- Época: final del invierno en semillero protegido
-- Trasplante: cuando no haya riesgo de heladas
-- Marco de plantación: 40x60 cm
+## Cuidados
+- Riego: Regular pero sin encharcamiento
+- Poda: Formación en los primeros años, luego poda de fructificación
+- Fertilización: NPK equilibrado según análisis de suelo
+- Tratamientos: Preventivos contra plagas y enfermedades
 
-CUIDADOS:
-- Riego: constante y uniforme, evitar mojar las hojas
-- Tutorado: indispensable para variedades indeterminadas
-- Poda: eliminar chupones y hojas inferiores
-
-NUTRICIÓN:
-- Compost bien maduro antes de la plantación
-- Fertilización rica en potasio durante la fructificación
-- Evitar exceso de nitrógeno
-
-COSECHA:
-- Los frutos se recolectan cuando empiezan a cambiar de color
-- Conservación: lugar fresco y ventilado
-                """
-            },
+## Cosecha
+- Tiempo: 3-5 años desde la plantación
+- Época: Agosto-octubre según variedad
+- Indicadores: Color, facilidad de desprendimiento, sabor""",
             
-            "pathology": {
-                "mildiu_vid.txt": """
-El mildiu de la vid (Plasmopara viticola) es una de las enfermedades más graves de la viticultura.
+            "cuidados_tomate.txt": """# Cuidados del Tomate (Solanum lycopersicum)
 
-SÍNTOMAS:
-- Manchas amarillentas en el haz de las hojas
-- Pelusilla blanquecina en el envés
-- Necrosis y defoliación en casos severos
-- Afectación de racimos jóvenes
+## Introducción
+El tomate es una de las hortalizas más cultivadas en el mundo. Requiere cuidados específicos para obtener una producción óptima y frutos de calidad.
 
-CONDICIONES FAVORABLES:
-- Humedad relativa alta (>95%)
-- Temperaturas entre 20-25°C
-- Precipitaciones frecuentes
-- Rocío matutino prolongado
+## Preparación del Suelo
+- pH ideal: 6.0-6.8
+- Materia orgánica: Incorporar compost o estiércol maduro
+- Drenaje: Fundamental para evitar enfermedades radiculares
+- Profundidad de laboreo: 25-30 cm
 
-CONTROL PREVENTIVO:
-- Poda que favorezca la ventilación
+## Siembra y Trasplante
+- Semillero: Febrero-marzo en zona templada
+- Trasplante: Cuando las plantas tengan 15-20 cm
+- Marco de plantación: 40x80 cm
+- Profundidad: Enterrar hasta las primeras hojas verdaderas
+
+## Riego
+- Frecuencia: Regular y constante
+- Cantidad: 2-3 litros por planta y riego
+- Método: Por goteo o surcos, evitar mojar hojas
+- Mulching: Recomendado para conservar humedad
+
+## Entutorado
+- Sistemas: Caña, espalderas o mallas
+- Altura: Mínimo 1.5 metros
+- Atado: Con rafia o clips especiales
+- Momento: Desde el trasplante
+
+## Poda
+- Destallado: Eliminar brotes axilares semanalmente
+- Deshojado: Quitar hojas inferiores progresivamente
+- Despunte: Cortar el ápice cuando alcance la altura deseada
+
+## Fertilización
+- Base: Fósforo y potasio antes del trasplante
+- Cobertera: Nitrógeno fraccionado durante el cultivo
+- Microelementos: Especial atención a calcio y magnesio
+
+## Problemas Comunes
+- Podredumbre apical: Falta de calcio
+- Agrietado: Riego irregular
+- Plagas: Mosca blanca, trips, ácaros
+- Enfermedades: Mildiu, alternaria, fusarium"""
+        }
+        
+        # Documentos de patología
+        pathology_docs = {
+            "mildiu_vid.txt": """# Mildiu de la Vid (Plasmopara viticola)
+
+## Descripción
+El mildiu es una de las enfermedades más destructivas de la vid, causada por el oomiceto Plasmopara viticola. Afecta principalmente hojas, racimos y brotes jóvenes.
+
+## Síntomas
+### En Hojas
+- Manchas amarillentas traslúcidas (manchas de aceite)
+- En el envés: pelusilla blanca característica
+- Necrosis y defoliación en casos graves
+
+### En Racimos
+- Granos pardos y arrugados
+- Podredumbre seca en uvas jóvenes
+- Pérdida total del racimo en ataques severos
+
+### En Brotes
+- Lesiones necróticas
+- Deformaciones y acortamiento de entrenudos
+
+## Condiciones Favorables
+- Temperatura: 20-25°C óptima
+- Humedad: Superior al 95%
+- Agua libre: Necesaria para la germinación
+- Lluvias frecuentes en primavera-verano
+
+## Ciclo de la Enfermedad
+1. **Invernación**: Oosporas en hojas caídas
+2. **Infección primaria**: Abril-mayo con lluvias
+3. **Infecciones secundarias**: Mayo-agosto
+4. **Formación de oosporas**: Agosto-septiembre
+
+## Tratamientos Preventivos
+- Cobre: Tratamientos de invierno
+- Fungicidas sistémicos: Metalaxil, fosetil-Al
+- Fungicidas de contacto: Mancozeb, propineb
+- Calendarios de tratamiento según riesgo
+
+## Medidas Culturales
+- Poda adecuada para ventilación
 - Eliminación de restos vegetales
-- Tratamientos preventivos con cobre
+- Drenaje correcto del suelo
+- Variedades resistentes
 
-CONTROL QUÍMICO:
-- Fungicidas sistémicos (fosfonatos)
-- Fungicidas de contacto (cobre, mancozeb)
-- Alternar materias activas para evitar resistencias
-
-MOMENTO DE APLICACIÓN:
-- Preventivo antes de lluvias
-- Estadios críticos: brotación, floración, envero
-                """,
-                
-                "oidio_cucurbitaceas.txt": """
-El oídio en cucurbitáceas es causado principalmente por Sphaerotheca fuliginea.
-
-IDENTIFICACIÓN:
-- Manchas blancas pulverulentas en hojas
-- Afecta haz y envés de las hojas
-- Deformación y amarilleo foliar
-- Puede afectar frutos jóvenes
-
-FACTORES PREDISPONENTES:
-- Humedad ambiental alta
-- Temperaturas moderadas (20-25°C)
-- Falta de ventilación
-- Exceso de nitrógeno
-
-MEDIDAS CULTURALES:
-- Marcos de plantación amplios
-- Eliminación de malas hierbas
-- Riego por goteo (evitar mojar follaje)
-- Fertilización equilibrada
-
-CONTROL BIOLÓGICO:
-- Bacillus subtilis
-- Trichoderma harzianum
-- Aceites esenciales (tomillo, canela)
-
-CONTROL QUÍMICO:
-- Azufre en polvo o mojable
-- Fungicidas sistémicos (triazoles)
-- Bicarbonato potásico
-                """
-            },
+## Umbrales de Tratamiento
+- Modelo Mills: Suma de grados día después de lluvia
+- Regla de los 3-10: 3 días consecutivos con T>10°C tras 10mm lluvia
+- Monitoreo de esporas en aire""",
             
-            "general": {
-                "fotosintesis.txt": """
-La fotosíntesis es el proceso fundamental por el cual las plantas convierten la energía lumínica en energía química.
+            "oidio_cucurbitaceas.txt": """# Oídio en Cucurbitáceas (Podosphaera xanthii)
 
-DEFINICIÓN:
-La fotosíntesis es el proceso mediante el cual las plantas utilizan la luz solar, el dióxido de carbono y el agua para producir glucosa y oxígeno.
+## Agente Causal
+Podosphaera xanthii (anteriormente Sphaerotheca fuliginea) es el principal causante del oídio en cucurbitáceas como melón, sandía, calabacín y pepino.
 
-ECUACIÓN GENERAL:
-6CO₂ + 6H₂O + energía lumínica → C₆H₁₂O₆ + 6O₂
+## Síntomas Característicos
+### En Hojas
+- Manchas blancas pulverulentas circulares
+- Crecimiento del micelio en haz y envés
+- Amarilleamiento y necrosis progresiva
+- Defoliación prematura en casos severos
 
-FASES DEL PROCESO:
+### En Tallos y Pecíolos
+- Lesiones blanquecinas alargadas
+- Debilitamiento estructural
+- Posible rotura por viento
 
-1. FASE LUMINOSA (Tilacoides):
-- Captura de luz por las clorofilas
-- Fotólisis del agua
+### En Frutos
+- Manchas superficiales blancas
+- Alteración de la calidad
+- Maduración irregular
+
+## Condiciones Predisponentes
+- Temperatura: 20-30°C (óptimo 26°C)
+- Humedad relativa: 50-90%
+- Ambiente seco favorece conidiogénesis
+- Cultivo protegido propicia desarrollo
+
+## Ciclo Biológico
+1. **Supervivencia**: Micelio en plantas hospederas
+2. **Diseminación**: Conidios por viento
+3. **Infección**: Penetración directa por epidermis
+4. **Colonización**: Desarrollo superficial del micelio
+5. **Reproducción**: Formación de conidios cada 3-7 días
+
+## Estrategias de Control
+### Control Químico
+- Azufre: Fungicida tradicional eficaz
+- IBE (Inhibidores de la biosíntesis del ergosterol)
+- QoI (Inhibidores del complejo III)
+- Rotación de materias activas
+
+### Control Biológico
+- Bacillus subtilis
+- Ampelomyces quisqualis
+- Trichoderma harzianum
+- Aplicaciones preventivas
+
+### Medidas Culturales
+- Eliminación de restos infectados
+- Ventilación adecuada en invernadero
+- Evitar exceso de nitrógeno
+- Variedades resistentes
+
+## Resistencias
+- Múltiples razas del patógeno
+- Genes de resistencia: Pm-1, Pm-3, Pm-5
+- Necesidad de variedades multigénicas
+- Monitoreo constante de nuevas razas"""
+        }
+        
+        # Documentos generales
+        general_docs = {
+            "fotosintesis.txt": """# La Fotosíntesis: Proceso Fundamental de la Vida
+
+## Definición
+La fotosíntesis es el proceso biológico mediante el cual las plantas, algas y algunas bacterias convierten la energía solar, el dióxido de carbono y el agua en glucosa y oxígeno, utilizando la clorofila como pigmento principal.
+
+## Ecuación General
+6CO₂ + 6H₂O + energía solar → C₆H₁₂O₆ + 6O₂
+
+## Fases de la Fotosíntesis
+
+### Fase Luminosa (Reacciones de Hill)
+**Localización**: Tilacoides de los cloroplastos
+**Procesos**:
+- Captación de luz por fotosistemas I y II
+- Fotólisis del agua (H₂O → 2H⁺ + ½O₂ + 2e⁻)
+- Transporte de electrones
 - Síntesis de ATP y NADPH
 - Liberación de oxígeno
 
-2. FASE OSCURA (Estroma):
-- Ciclo de Calvin-Benson
-- Fijación del CO₂
+### Fase Oscura (Ciclo de Calvin-Benson)
+**Localización**: Estroma de los cloroplastos
+**Procesos**:
+- Fijación de CO₂ por la RuBisCO
+- Formación de compuestos de 3 carbonos
+- Regeneración de la ribulosa 1,5-bifosfato
 - Síntesis de glucosa
-- Regeneración de RuBP
 
-IMPORTANCIA:
+## Factores que Afectan la Fotosíntesis
+
+### Factores Internos
+- Concentración de clorofila
+- Edad de las hojas
+- Estado nutricional de la planta
+- Estructura del aparato fotosintético
+
+### Factores Externos
+- **Intensidad lumínica**: Factor limitante principal
+- **Temperatura**: Óptimo entre 20-30°C
+- **Concentración de CO₂**: Actual ~400 ppm
+- **Disponibilidad de agua**: Necesaria para reacciones
+
+## Importancia Biológica
 - Producción de oxígeno atmosférico
-- Base de las cadenas alimentarias
-- Fijación de carbono atmosférico
-- Fuente de energía para la biosfera
+- Base de todas las cadenas alimentarias
+- Almacenamiento de energía en compuestos orgánicos
+- Regulación del CO₂ atmosférico
+- Formación de biomasa vegetal
 
-FACTORES LIMITANTES:
-- Intensidad lumínica
+## Tipos de Fotosíntesis
+
+### Plantas C3
+- 85% de las plantas
+- Fijación directa de CO₂
+- Eficiente en climas templados
+- Ejemplos: trigo, arroz, soja
+
+### Plantas C4
+- Adaptadas a climas cálidos
 - Concentración de CO₂
-- Temperatura
-- Disponibilidad de agua
-                """,
-                
-                "clasificacion_plantas.txt": """
-La clasificación de las plantas se basa en características morfológicas, anatómicas y evolutivas.
+- Mayor eficiencia en temperatura alta
+- Ejemplos: maíz, caña de azúcar
 
-GRANDES GRUPOS:
+### Plantas CAM
+- Metabolismo Ácido de las Crasuláceas
+- Apertura estomática nocturna
+- Adaptación a ambientes áridos
+- Ejemplos: cactus, piña, agave""",
+            
+            "clasificacion_plantas.txt": """# Clasificación Botánica de las Plantas
 
-1. BRIÓFITOS (Musgos y hepáticas):
-- Sin tejidos vasculares
+## Sistema de Clasificación Taxonómica
+
+### Jerarquía Taxonómica
+1. **Reino**: Plantae
+2. **División/Filo**: Ejemplo - Magnoliophyta
+3. **Clase**: Ejemplo - Magnoliopsida
+4. **Orden**: Ejemplo - Rosales
+5. **Familia**: Ejemplo - Rosaceae
+6. **Género**: Ejemplo - Malus
+7. **Especie**: Ejemplo - domestica
+
+### Nomenclatura Binomial
+Creada por Carl Linnaeus, utiliza dos nombres latinos:
+- **Género** (mayúscula inicial)
+- **Epíteto específico** (minúscula)
+- Ejemplo: *Malus domestica* (manzano)
+
+## Grandes Grupos de Plantas
+
+### Briófitas (Musgos y Hepáticas)
+- Sin tejidos vasculares verdaderos
+- Pequeño tamaño
 - Dependientes del agua para reproducción
-- Gametófito dominante
+- Gametofito dominante
 
-2. PTERIDÓFITOS (Helechos):
-- Con tejidos vasculares
+### Pteridófitas (Helechos)
+- Primeras plantas vasculares
 - Sin semillas
-- Esporófito dominante
 - Reproducción por esporas
+- Esporofito dominante
 
-3. GIMNOSPERMAS:
-- Semillas desnudas
-- Hojas aciculares o escamosas
-- Flores unisexuales
+### Gimnospermas
+- Plantas con semillas desnudas
+- Hojas en forma de aguja o escama
+- Adaptadas a climas fríos
 - Ejemplos: pinos, abetos, cipreses
 
-4. ANGIOSPERMAS:
-- Semillas protegidas en frutos
-- Flores con pétalos y sépalos
+### Angiospermas
+- Plantas con flores y frutos
+- Semillas protegidas
 - Mayor diversidad vegetal
+- Divididas en monocotiledóneas y dicotiledóneas
 
-SUBDIVISIÓN DE ANGIOSPERMAS:
+## Clasificación por Características Morfológicas
 
-MONOCOTILEDÓNEAS:
-- Un cotiledón en la semilla
-- Hojas con nerviación paralela
-- Flores trímeras
-- Ejemplos: gramíneas, orquídeas
+### Según el Tallo
+- **Árboles**: Tallo leñoso >5m
+- **Arbustos**: Tallo leñoso <5m, ramificado desde la base
+- **Hierbas**: Tallo no leñoso
 
-DICOTILEDÓNEAS:
-- Dos cotiledones en la semilla
-- Hojas con nerviación reticulada
-- Flores tetrámeras o pentámeras
-- Ejemplos: rosales, leguminosas
-                """
-            }
+### Según las Hojas
+- **Perennes**: Mantienen hojas todo el año
+- **Caducas**: Pierden hojas en época desfavorable
+- **Forma**: Linear, ovalada, palmeada, etc.
+
+### Según el Hábitat
+- **Terrestres**: Crecen en tierra firme
+- **Acuáticas**: Viven en medios acuáticos
+- **Epífitas**: Crecen sobre otras plantas
+- **Parásitas**: Dependen de otros organismos
+
+## Familias Importantes
+
+### Rosaceae (Rosáceas)
+- Flores con 5 pétalos
+- Frutos variados (drupa, pomo, aquenio)
+- Ejemplos: rosa, manzano, almendro, fresa
+
+### Fabaceae (Leguminosas)
+- Fruto en legumbre
+- Fijación de nitrógeno
+- Ejemplos: judía, guisante, alfalfa
+
+### Solanaceae (Solanáceas)
+- Flores pentámeras
+- Fruto en baya o cápsula
+- Ejemplos: tomate, patata, pimiento
+
+### Asteraceae (Compuestas)
+- Inflorescencia en capítulo
+- Familia más numerosa
+- Ejemplos: margarita, girasol, lechuga
+
+## Criterios de Clasificación Moderna
+
+### Morfológicos
+- Estructura de flores, frutos, hojas
+- Anatomía interna
+- Desarrollo embriológico
+
+### Moleculares
+- Secuenciación de ADN
+- Análisis filogenético
+- Proteínas y enzimas
+
+### Ecológicos
+- Adaptaciones al medio
+- Relaciones evolutivas
+- Distribución geográfica"""
         }
         
-        for topic, files in sample_docs.items():
-            topic_dir = self.documents_path / topic
-            topic_dir.mkdir(parents=True, exist_ok=True)
-            
-            for filename, content in files.items():
-                file_path = topic_dir / filename
-                with open(file_path, 'w', encoding='utf-8') as f:
-                    f.write(content.strip())
-                
-                self.logger.info(f"Creado documento de ejemplo: {file_path}")
+        # Crear archivos con codificación UTF-8
+        base_path = Path("data/documents")
+        
+        for category, docs in [("plants", plants_docs), ("pathology", pathology_docs), ("general", general_docs)]:
+            category_path = base_path / category
+            for filename, content in docs.items():
+                file_path = category_path / filename
+                try:
+                    with open(file_path, 'w', encoding='utf-8') as f:
+                        f.write(content)
+                    logger.info(f"Creado documento de ejemplo: {file_path}")
+                except Exception as e:
+                    logger.error(f"Error creando {file_path}: {e}")
     
-    def get_statistics(self) -> Dict[str, Any]:
+    def load_documents_from_directory(self, directory: str, topic: str) -> List:
+        """Carga documentos desde un directorio con manejo robusto de errores"""
+        logger.info(f"Cargando documentos desde: {directory}")
+        
+        if not os.path.exists(directory):
+            logger.warning(f"Directorio no existe: {directory}")
+            return []
+        
+        documents = []
+        
+        # Buscar archivos manualmente para mejor control de errores
+        for file_path in Path(directory).glob("*.txt"):
+            try:
+                # Intentar diferentes codificaciones
+                content = None
+                for encoding in ['utf-8', 'latin-1', 'cp1252']:
+                    try:
+                        with open(file_path, 'r', encoding=encoding) as f:
+                            content = f.read()
+                        break
+                    except UnicodeDecodeError:
+                        continue
+                
+                if content is None:
+                    logger.error(f"No se pudo decodificar {file_path}")
+                    continue
+                
+                # Crear documento manualmente
+                from langchain_core.documents import Document
+                doc = Document(
+                    page_content=content,
+                    metadata={
+                        "source": str(file_path),
+                        "topic": topic,
+                        "filename": file_path.name
+                    }
+                )
+                documents.append(doc)
+                logger.info(f"Cargado: {file_path.name} (1 docs)")
+                
+            except Exception as e:
+                logger.error(f"Error cargando {file_path}: {e}")
+                continue
+        
+        logger.info(f"Total documentos cargados para {topic}: {len(documents)}")
+        return documents
+    
+    def process_documents(self, documents: List, chunk_size: int = 1000, chunk_overlap: int = 200) -> List:
+        """Procesa y divide documentos en chunks"""
+        if not documents:
+            return []
+        
+        logger.info(f"Procesando {len(documents)} documentos...")
+        
+        # Configurar text splitter
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            length_function=len,
+            separators=["\n\n", "\n", ".", " ", ""]
+        )
+        
+        # Dividir documentos
+        chunks = text_splitter.split_documents(documents)
+        logger.info(f"Documentos divididos en {len(chunks)} chunks")
+        
+        return chunks
+    
+    def create_vectorstore(self, documents: List, topic: str) -> bool:
+        """Crea el vectorstore para una temática"""
+        if not documents:
+            logger.warning(f"No hay documentos para crear vectorstore de {topic}")
+            return False
+        
+        logger.info(f"Creando vectorstore para {topic} con {len(documents)} documentos...")
+        
+        try:
+            vectorstore_path = self.settings.get_vectorstore_path(topic)
+            
+            # Crear vectorstore
+            vectorstore = Chroma.from_documents(
+                documents=documents,
+                embedding=self.embeddings,
+                persist_directory=vectorstore_path
+            )
+            
+            logger.info(f"Vectorstore creado exitosamente: {vectorstore_path}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error creando vectorstore para {topic}: {e}")
+            return False
+    
+    def validate_vectorstore(self, topic: str) -> bool:
+        """Valida que el vectorstore se creó correctamente"""
+        try:
+            vectorstore_path = self.settings.get_vectorstore_path(topic)
+            
+            # Cargar vectorstore
+            vectorstore = Chroma(
+                persist_directory=vectorstore_path,
+                embedding_function=self.embeddings
+            )
+            
+            # Hacer una consulta de prueba
+            results = vectorstore.similarity_search("test", k=1)
+            logger.info(f"Vectorstore {topic} validado: {len(results)} resultados")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error validando vectorstore {topic}: {e}")
+            return False
+    
+    def process_topic(self, topic: str) -> bool:
+        """Procesa una temática completa"""
+        logger.info("=" * 50)
+        logger.info(f"PROCESANDO TEMÁTICA: {topic.upper()}")
+        logger.info("=" * 50)
+        
+        # Directorio de documentos
+        docs_directory = os.path.join("data", "documents", topic)
+        
+        # Verificar si hay archivos
+        if not os.path.exists(docs_directory):
+            logger.warning(f"Directorio no existe: {docs_directory}")
+            return False
+        
+        files = list(Path(docs_directory).glob("*.txt"))
+        if not files:
+            logger.warning(f"No se encontraron archivos .txt en {docs_directory}")
+            return False
+        
+        logger.info(f"Encontrados {len(files)} archivos para procesar")
+        
+        # Cargar documentos
+        documents = self.load_documents_from_directory(docs_directory, topic)
+        
+        if not documents:
+            logger.warning(f"No se pudieron cargar documentos para {topic}")
+            return False
+        
+        # Procesar documentos
+        chunks = self.process_documents(documents)
+        
+        # Crear vectorstore
+        success = self.create_vectorstore(chunks, topic)
+        
+        if success:
+            # Validar vectorstore
+            if self.validate_vectorstore(topic):
+                logger.info(f"✅ Temática {topic} procesada exitosamente")
+                return True
+        
+        logger.error(f"❌ Error procesando temática {topic}")
+        return False
+    
+    def get_vectorstore_stats(self) -> Dict[str, int]:
         """Obtiene estadísticas de los vectorstores"""
         stats = {}
         
         for topic in self.settings.RAG_TOPICS:
-            topic_stats = {
-                "documents_path": str(self.documents_path / topic),
-                "vectorstore_path": str(self.vectorstores_path / topic),
-                "has_documents": False,
-                "has_vectorstore": False,
-                "document_count": 0,
-                "vectorstore_size": 0
-            }
-            
-            # Estadísticas de documentos
-            topic_path = self.documents_path / topic
-            if topic_path.exists():
-                files = list(topic_path.rglob("*"))
-                document_files = [f for f in files if f.is_file()]
-                topic_stats["has_documents"] = len(document_files) > 0
-                topic_stats["document_count"] = len(document_files)
-            
-            # Estadísticas de vectorstore
-            vectorstore_path = self.vectorstores_path / topic
-            if vectorstore_path.exists():
-                topic_stats["has_vectorstore"] = True
-                try:
+            try:
+                vectorstore_path = self.settings.get_vectorstore_path(topic)
+                if os.path.exists(vectorstore_path):
                     vectorstore = Chroma(
-                        persist_directory=str(vectorstore_path),
-                        embedding_function=self.embeddings,
-                        collection_name=f"{topic}_collection"
+                        persist_directory=vectorstore_path,
+                        embedding_function=self.embeddings
                     )
-                    # Obtener número de documentos en el vectorstore
-                    collection = vectorstore._collection
-                    topic_stats["vectorstore_size"] = collection.count()
-                except Exception as e:
-                    self.logger.warning(f"Error obteniendo estadísticas de {topic}: {e}")
-            
-            stats[topic] = topic_stats
+                    # Contar documentos con una búsqueda amplia
+                    results = vectorstore.similarity_search("", k=1000)
+                    stats[topic] = len(results)
+                else:
+                    stats[topic] = 0
+            except Exception as e:
+                logger.error(f"Error obteniendo stats de {topic}: {e}")
+                stats[topic] = 0
         
         return stats
 
 def main():
-    """Función principal"""
     parser = argparse.ArgumentParser(description="Procesador de documentos para AgentRagMCP")
-    parser.add_argument("--topic", choices=["plants", "pathology", "general", "all"],
-                       default="all", help="Temática a procesar")
-    parser.add_argument("--force", action="store_true",
-                       help="Forzar recreación de vectorstores existentes")
-    parser.add_argument("--create-samples", action="store_true",
+    parser.add_argument("--create-samples", action="store_true", 
                        help="Crear documentos de ejemplo")
-    parser.add_argument("--stats", action="store_true",
-                       help="Mostrar estadísticas solamente")
-    parser.add_argument("--base-path", help="Directorio base del proyecto")
-    parser.add_argument("--verbose", "-v", action="store_true",
-                       help="Modo verbose")
+    parser.add_argument("--topics", nargs="+", 
+                       help="Temáticas específicas a procesar")
+    parser.add_argument("--chunk-size", type=int, default=1000,
+                       help="Tamaño de los chunks")
+    parser.add_argument("--chunk-overlap", type=int, default=200,
+                       help="Solapamiento entre chunks")
     
     args = parser.parse_args()
     
-    # Configurar logging
-    if args.verbose:
-        logging.basicConfig(level=logging.DEBUG)
+    # Inicializar procesador
+    processor = DocumentProcessor()
+    
+    # Configurar directorios
+    processor.setup_directories()
+    
+    # Crear documentos de ejemplo si se solicita
+    if args.create_samples:
+        processor.create_sample_documents()
+        print("✅ Documentos de ejemplo creados")
+    
+    # Determinar temáticas a procesar
+    topics_to_process = args.topics if args.topics else processor.settings.RAG_TOPICS
+    
+    # Procesar cada temática
+    successful_topics = 0
+    total_topics = len(topics_to_process)
+    
+    for topic in topics_to_process:
+        if processor.process_topic(topic):
+            successful_topics += 1
+    
+    # Resumen final
+    print("\n" + "=" * 50)
+    print("📋 RESUMEN DE PROCESAMIENTO")
+    print("=" * 50)
+    
+    if successful_topics == total_topics:
+        print(f"✅ Todas las temáticas procesadas exitosamente: {successful_topics}/{total_topics}")
     else:
-        logging.basicConfig(level=logging.INFO)
+        print(f"⚠️  Algunas temáticas no se pudieron crear")
+        print(f"✅ Temáticas procesadas exitosamente: {successful_topics}/{total_topics}")
     
-    # Crear procesador
-    processor = DocumentProcessor(args.base_path)
-    
-    try:
-        # Crear directorios
-        processor.setup_directories()
-        
-        # Crear documentos de ejemplo si se solicita
-        if args.create_samples:
-            processor.create_sample_documents()
-            print("✅ Documentos de ejemplo creados")
-        
-        # Mostrar estadísticas
-        if args.stats:
-            stats = processor.get_statistics()
-            print("\n📊 ESTADÍSTICAS DE DATOS:")
-            print("=" * 50)
-            
-            for topic, data in stats.items():
-                print(f"\n🏷️  {topic.upper()}:")
-                print(f"   📁 Documentos: {data['document_count']} archivos")
-                print(f"   🗃️  Vectorstore: {'✅' if data['has_vectorstore'] else '❌'} ({data['vectorstore_size']} chunks)")
-                print(f"   📍 Ruta docs: {data['documents_path']}")
-                print(f"   📍 Ruta vector: {data['vectorstore_path']}")
-            
-            return
-        
-        # Procesar temáticas
-        if args.topic == "all":
-            topics = processor.settings.RAG_TOPICS
-        else:
-            topics = [args.topic]
-        
-        success_count = 0
-        for topic in topics:
-            if processor.process_topic(topic, args.force):
-                success_count += 1
-        
-        # Resumen final
-        print(f"\n{'='*50}")
-        print("📋 RESUMEN DE PROCESAMIENTO")
-        print(f"{'='*50}")
-        print(f"✅ Temáticas procesadas exitosamente: {success_count}/{len(topics)}")
-        
-        if success_count == len(topics):
-            print("🎉 ¡Todos los vectorstores creados correctamente!")
-        elif success_count > 0:
-            print("⚠️  Algunos vectorstores no se pudieron crear")
-        else:
-            print("❌ No se pudo crear ningún vectorstore")
-        
-        # Mostrar estadísticas finales
-        stats = processor.get_statistics()
-        print(f"\n📊 ESTADÍSTICAS FINALES:")
-        for topic, data in stats.items():
-            status = "✅" if data['has_vectorstore'] else "❌"
-            print(f"   {status} {topic}: {data['vectorstore_size']} chunks")
-        
-    except KeyboardInterrupt:
-        print("\n⏹️  Procesamiento interrumpido por el usuario")
-        sys.exit(1)
-    except Exception as e:
-        print(f"\n💥 Error crítico: {e}")
-        sys.exit(1)
+    # Estadísticas finales
+    stats = processor.get_vectorstore_stats()
+    print(f"\n📊 ESTADÍSTICAS FINALES:")
+    for topic, count in stats.items():
+        status = "✅" if count > 0 else "❌"
+        print(f"   {status} {topic}: {count} chunks")
 
 if __name__ == "__main__":
     main()

@@ -3,6 +3,9 @@ import time
 from typing import List, Dict, Any, Optional, Tuple
 from pathlib import Path
 
+# Importar configuración de ChromaDB ANTES que cualquier otra cosa
+from agentragmcp.core.chroma_config import configure_chroma
+
 from langchain_chroma import Chroma
 from langchain_ollama import OllamaEmbeddings, ChatOllama
 from langchain.chains import create_retrieval_chain
@@ -33,6 +36,9 @@ class RAGService:
         self.retrievers = {}
         self.chains = {}
         self.chat_histories = {}
+        
+        # Configurar ChromaDB antes de cualquier inicialización
+        configure_chroma()
         
         # Inicializar componentes
         self._initialize_embeddings()
@@ -90,16 +96,35 @@ class RAGService:
                 logger.warning(f"Vectorstore no encontrado para {topic} en: {vectorstore_path}")
                 return None
             
-            # Cargar vectorstore
+            # Verificar que tiene contenido (ChromaDB crea varios archivos)
+            chroma_files = list(Path(vectorstore_path).glob("*"))
+            if not chroma_files:
+                logger.warning(f"Vectorstore vacío para {topic} en: {vectorstore_path}")
+                return None
+            
+            # Cargar vectorstore con configuración mejorada
             vectorstore = Chroma(
                 persist_directory=vectorstore_path,
                 embedding_function=self.embeddings
             )
             
-            # Crear retriever
+            # Verificar que tiene documentos
+            try:
+                test_results = vectorstore.similarity_search("test", k=1)
+                if not test_results:
+                    logger.warning(f"Vectorstore {topic} no contiene documentos")
+                    return None
+            except Exception as e:
+                logger.warning(f"Error probando vectorstore {topic}: {e}")
+                return None
+            
+            # Crear retriever con configuración optimizada
             retriever = vectorstore.as_retriever(
                 search_type=self.settings.RETRIEVAL_TYPE,
-                search_kwargs={"k": self.settings.RETRIEVAL_K}
+                search_kwargs={
+                    "k": self.settings.RETRIEVAL_K,
+                    "score_threshold": 0.5  # Filtrar resultados con baja similaridad
+                }
             )
             
             return retriever
@@ -172,7 +197,7 @@ class RAGService:
         """Obtiene el prompt del sistema específico para cada temática"""
         
         base_prompt = """
-Eres un asistente especializado llamado ChatPlants. 
+Eres un asistente especializado llamado AgentRagMCP. 
 Si no sabes la respuesta, simplemente di "No lo sé", pero no inventes una respuesta.
 Las respuestas deben ser concisas, de máximo tres o cuatro párrafos.
 Responde en castellano (español de España) a menos que se te pida explícitamente otro idioma.
@@ -380,3 +405,30 @@ Proporciona información específica y detallada sobre este tema.
             "exists": True,
             "last_message": history.messages[-1] if history.messages else None
         }
+    
+    def reload_vectorstore(self, topic: str) -> bool:
+        """Recarga un vectorstore específico"""
+        try:
+            logger.info(f"Recargando vectorstore para temática: {topic}")
+            
+            # Eliminar retriever y cadena existentes
+            if topic in self.retrievers:
+                del self.retrievers[topic]
+            if topic in self.chains:
+                del self.chains[topic]
+            
+            # Cargar nuevamente
+            retriever = self._load_retriever(topic)
+            if retriever:
+                self.retrievers[topic] = retriever
+                chain = self._create_rag_chain(topic, retriever)
+                self.chains[topic] = chain
+                logger.info(f"Vectorstore {topic} recargado exitosamente")
+                return True
+            else:
+                logger.error(f"No se pudo recargar vectorstore para {topic}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error recargando vectorstore {topic}: {e}")
+            return False

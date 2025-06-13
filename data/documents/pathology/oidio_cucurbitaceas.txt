@@ -1,29 +1,59 @@
-El oídio en cucurbitáceas es causado principalmente por Sphaerotheca fuliginea.
+# Oídio en Cucurbitáceas (Podosphaera xanthii)
 
-IDENTIFICACIÓN:
-- Manchas blancas pulverulentas en hojas
-- Afecta haz y envés de las hojas
-- Deformación y amarilleo foliar
-- Puede afectar frutos jóvenes
+## Agente Causal
+Podosphaera xanthii (anteriormente Sphaerotheca fuliginea) es el principal causante del oídio en cucurbitáceas como melón, sandía, calabacín y pepino.
 
-FACTORES PREDISPONENTES:
-- Humedad ambiental alta
-- Temperaturas moderadas (20-25°C)
-- Falta de ventilación
-- Exceso de nitrógeno
+## Síntomas Característicos
+### En Hojas
+- Manchas blancas pulverulentas circulares
+- Crecimiento del micelio en haz y envés
+- Amarilleamiento y necrosis progresiva
+- Defoliación prematura en casos severos
 
-MEDIDAS CULTURALES:
-- Marcos de plantación amplios
-- Eliminación de malas hierbas
-- Riego por goteo (evitar mojar follaje)
-- Fertilización equilibrada
+### En Tallos y Pecíolos
+- Lesiones blanquecinas alargadas
+- Debilitamiento estructural
+- Posible rotura por viento
 
-CONTROL BIOLÓGICO:
+### En Frutos
+- Manchas superficiales blancas
+- Alteración de la calidad
+- Maduración irregular
+
+## Condiciones Predisponentes
+- Temperatura: 20-30°C (óptimo 26°C)
+- Humedad relativa: 50-90%
+- Ambiente seco favorece conidiogénesis
+- Cultivo protegido propicia desarrollo
+
+## Ciclo Biológico
+1. **Supervivencia**: Micelio en plantas hospederas
+2. **Diseminación**: Conidios por viento
+3. **Infección**: Penetración directa por epidermis
+4. **Colonización**: Desarrollo superficial del micelio
+5. **Reproducción**: Formación de conidios cada 3-7 días
+
+## Estrategias de Control
+### Control Químico
+- Azufre: Fungicida tradicional eficaz
+- IBE (Inhibidores de la biosíntesis del ergosterol)
+- QoI (Inhibidores del complejo III)
+- Rotación de materias activas
+
+### Control Biológico
 - Bacillus subtilis
+- Ampelomyces quisqualis
 - Trichoderma harzianum
-- Aceites esenciales (tomillo, canela)
+- Aplicaciones preventivas
 
-CONTROL QUÍMICO:
-- Azufre en polvo o mojable
-- Fungicidas sistémicos (triazoles)
-- Bicarbonato potásico
+### Medidas Culturales
+- Eliminación de restos infectados
+- Ventilación adecuada en invernadero
+- Evitar exceso de nitrógeno
+- Variedades resistentes
+
+## Resistencias
+- Múltiples razas del patógeno
+- Genes de resistencia: Pm-1, Pm-3, Pm-5
+- Necesidad de variedades multigénicas
+- Monitoreo constante de nuevas razas

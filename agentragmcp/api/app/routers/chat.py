@@ -47,13 +47,6 @@ async def get_request_context(request: Request):
     description="""
     Endpoint principal para interacciones de chat. 
     Selecciona automáticamente el agente más apropiado o usa el especificado.
-    
-    - **question**: Pregunta del usuario (obligatorio)
-    - **session_id**: ID de sesión (opcional, se crea automáticamente si no se proporciona)
-    - **agent_type**: Tipo específico de agente (opcional: plants, pathology, general)
-    - **topic**: Temática específica del RAG (opcional)
-    - **include_sources**: Incluir fuentes en la respuesta (opcional)
-    - **language**: Idioma de respuesta (por defecto: es)
     """
 )
 async def chat(
@@ -69,6 +62,11 @@ async def chat(
     
     if len(chat_request.question) > 2000:
         raise QuestionTooLongError(2000, len(chat_request.question))
+    
+    # ASEGURAR que session_id nunca sea None
+    if not chat_request.session_id:
+        from uuid import uuid4
+        chat_request.session_id = str(uuid4())
     
     # Validar topic si se especifica
     if chat_request.topic and chat_request.topic not in rag_service.get_available_topics():
@@ -101,10 +99,10 @@ async def chat(
         
         response_time = time.time() - start_time
         
-        # Construir respuesta
+        # Construir respuesta - ASEGURAR que todos los campos requeridos están presentes
         chat_response = ChatResponse(
             answer=answer,
-            session_id=chat_request.session_id,
+            session_id=chat_request.session_id,  # YA validado que no es None
             agent_type=metadata.get("agent_type", "unknown"),
             topic=metadata.get("topic", "unknown"),
             confidence=metadata.get("agent_selection_confidence"),

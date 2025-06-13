@@ -1,4 +1,3 @@
-
 import os
 import logging
 import uuid
@@ -29,31 +28,49 @@ class RequestIDFilter(logging.Filter):
             
         return True
 
-class AgentRagMCPFormatter(logging.Formatter):
-    """Formatter personalizado para AgentRagMCP con información contextual"""
+class SafeAgentRagMCPFormatter(logging.Formatter):
+    """Formatter seguro para AgentRagMCP que maneja campos faltantes"""
     
     def format(self, record):
-        # Agregar información contextual al record
-        if hasattr(record, 'chat_session_id'):
-            record.session = record.chat_session_id[:8] if record.chat_session_id else 'NO_SESSION'
+        # Asegurar que todos los campos requeridos existen antes del formateo
+        required_fields = [
+            'request_id', 'session', 'agent_type', 'topic', 
+            'chat_session_id', 'module', 'funcName'
+        ]
+        
+        for field in required_fields:
+            if not hasattr(record, field):
+                setattr(record, field, 'UNKNOWN')
+        
+        # Crear session corto si no existe
+        if hasattr(record, 'chat_session_id') and record.chat_session_id not in ['NO_SESSION', 'UNKNOWN']:
+            record.session = record.chat_session_id[:8] if len(record.chat_session_id) > 8 else record.chat_session_id
         else:
             record.session = 'NO_SESSION'
             
-        return super().format(record)
+        try:
+            return super().format(record)
+        except (KeyError, ValueError) as e:
+            # Si falla el formateo, usar formato simple
+            simple_format = f"{record.asctime if hasattr(record, 'asctime') else datetime.now().isoformat()}|{record.levelname}|{record.name}|{record.getMessage()}"
+            return simple_format
 
 async def add_request_id(request: Request, call_next):
     """Middleware para añadir un identificador único a cada request"""
     request_id = str(uuid.uuid4())
     request.state.request_id = request_id
     
-    # Log de inicio de request
+    # Log de inicio de request con campos seguros
     logger.info(
         f"Request started - {request.method} {request.url.path}",
         extra={
             'request_id': request_id,
             'method': request.method,
             'path': request.url.path,
-            'client_ip': request.client.host if request.client else 'unknown'
+            'client_ip': request.client.host if request.client else 'unknown',
+            'agent_type': 'HTTP_REQUEST',
+            'topic': 'API',
+            'chat_session_id': 'NO_SESSION'
         }
     )
     
@@ -66,7 +83,9 @@ async def add_request_id(request: Request, call_next):
             extra={
                 'request_id': request_id,
                 'status_code': response.status_code,
-                'response_time': 'calculated_in_middleware'
+                'agent_type': 'HTTP_REQUEST',
+                'topic': 'API',
+                'chat_session_id': 'NO_SESSION'
             }
         )
         
@@ -77,7 +96,10 @@ async def add_request_id(request: Request, call_next):
             extra={
                 'request_id': request_id,
                 'error': str(e),
-                'error_type': type(e).__name__
+                'error_type': type(e).__name__,
+                'agent_type': 'HTTP_REQUEST',
+                'topic': 'API',
+                'chat_session_id': 'NO_SESSION'
             },
             exc_info=True
         )
@@ -114,8 +136,8 @@ def setup_logging() -> logging.Logger:
     # Añadir filtros
     logger.addFilter(RequestIDFilter())
     
-    # Formato estructurado para análisis
-    formatter = AgentRagMCPFormatter(
+    # Formato estructurado para análisis - USAR FORMATTER SEGURO
+    formatter = SafeAgentRagMCPFormatter(
         '%(asctime)s|%(levelname)s|%(name)s|%(module)s|%(funcName)s|'
         'REQUEST:%(request_id)s|SESSION:%(session)s|AGENT:%(agent_type)s|'
         'TOPIC:%(topic)s|%(message)s'
@@ -135,7 +157,7 @@ def setup_logging() -> logging.Logger:
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
     
-    # Handler para consola en desarrollo
+    # Handler para consola en desarrollo - FORMATO SIMPLE
     if not global_settings.is_production:
         console_handler = logging.StreamHandler()
         console_formatter = logging.Formatter(
@@ -154,15 +176,6 @@ def get_logger_with_context(
 ) -> logging.LoggerAdapter:
     """
     Obtiene un logger con contexto específico para logging estructurado
-    
-    Args:
-        request_id: ID de la request HTTP
-        chat_session_id: ID de la sesión de chat
-        agent_type: Tipo de agente utilizado
-        topic: Temática o RAG utilizado
-    
-    Returns:
-        LoggerAdapter con contexto configurado
     """
     logger = logging.getLogger(global_settings.APP_NAME)
     
@@ -196,13 +209,14 @@ class ChatMetrics:
             "Chat interaction",
             extra={
                 'event_type': 'chat_interaction',
-                'chat_session_id': session_id,
-                'agent_type': agent_type,
-                'topic': topic,
-                'question_length': len(question),
+                'chat_session_id': session_id or 'NO_SESSION',
+                'agent_type': agent_type or 'UNKNOWN',
+                'topic': topic or 'UNKNOWN',
+                'question_length': len(question) if question else 0,
                 'response_time': response_time,
                 'success': success,
-                'error': error
+                'error': error,
+                'request_id': 'METRICS'
             }
         )
     
@@ -218,10 +232,13 @@ class ChatMetrics:
             "Agent selection",
             extra={
                 'event_type': 'agent_selection',
-                'chat_session_id': session_id,
+                'chat_session_id': session_id or 'NO_SESSION',
                 'selected_agent': selected_agent,
                 'confidence': confidence,
-                'question_preview': question[:100]
+                'question_preview': question[:100] if question else '',
+                'agent_type': selected_agent,
+                'topic': 'AGENT_SELECTION',
+                'request_id': 'METRICS'
             }
         )
     
@@ -238,11 +255,13 @@ class ChatMetrics:
             "RAG retrieval",
             extra={
                 'event_type': 'rag_retrieval',
-                'chat_session_id': session_id,
-                'topic': topic,
-                'query_length': len(query),
+                'chat_session_id': session_id or 'NO_SESSION',
+                'topic': topic or 'UNKNOWN',
+                'query_length': len(query) if query else 0,
                 'num_results': num_results,
-                'retrieval_time': retrieval_time
+                'retrieval_time': retrieval_time,
+                'agent_type': 'RAG_RETRIEVER',
+                'request_id': 'METRICS'
             }
         )
 

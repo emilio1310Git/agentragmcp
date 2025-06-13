@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List, Dict, Any
 from uuid import uuid4
 from datetime import datetime
@@ -37,17 +37,20 @@ class ChatRequest(BaseModel):
         description="Contexto adicional para la consulta"
     )
 
-    @validator('session_id', pre=True)
+    @field_validator('session_id', mode='before')
+    @classmethod
     def validate_session_id(cls, v):
         """Valida y normaliza el session_id"""
-        if v is None or v == "" or v.lower() == "nuevo":
+        if v is None or v == "" or (isinstance(v, str) and v.lower() in ["nuevo", "new"]):
             return str(uuid4())
-        return v
+        return str(v)  # Asegurar que siempre sea string
 
-    @validator('question')
+    @field_validator('question')
+    @classmethod
     def validate_question(cls, v):
         """Valida la pregunta"""
-        v = v.strip()
+        if isinstance(v, str):
+            v = v.strip()
         if not v:
             raise ValueError("La pregunta no puede estar vacía")
         return v

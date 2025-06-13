@@ -1,6 +1,5 @@
-
 import os
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, Union
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
@@ -32,7 +31,9 @@ class Settings(BaseSettings):
     # Configuración API
     API_HOST: str = Field(default="localhost", json_schema_extra={"env": "API_HOST"})
     API_PORT: int = Field(default=8000, json_schema_extra={"env": "API_PORT"}) 
-    CORS_ORIGINS: List[str] = Field(
+    
+    # CORS - permitir tanto string como lista
+    CORS_ORIGINS: Union[str, List[str]] = Field(
         default=["http://localhost:3000", "http://localhost:8080"], 
         json_schema_extra={"env": "CORS_ORIGINS"}
     )
@@ -43,7 +44,7 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL: str = Field(default="llama3.1", json_schema_extra={"env": "EMBEDDING_MODEL"})
     LLM_TEMPERATURE: float = Field(default=0.7, json_schema_extra={"env": "LLM_TEMPERATURE"})
     
-    # Configuración RAG
+    # Configuración RAG - usar string por defecto y convertir
     VECTORSTORE_TYPE: str = Field(default="chroma", json_schema_extra={"env": "VECTORSTORE_TYPE"})
     VECTORSTORE_BASE_PATH: str = Field(
         default="./data/vectorstores", 
@@ -52,9 +53,9 @@ class Settings(BaseSettings):
     RETRIEVAL_K: int = Field(default=5, json_schema_extra={"env": "RETRIEVAL_K"})
     RETRIEVAL_TYPE: str = Field(default="mmr", json_schema_extra={"env": "RETRIEVAL_TYPE"})
     
-    # Configuración de temáticas RAG (desde .env)
-    RAG_TOPICS: List[str] = Field(
-        default=["plants", "pathology", "general"],
+    # Configuración de temáticas RAG (como string para evitar parsing JSON)
+    RAG_TOPICS: Union[str, List[str]] = Field(
+        default="plants,pathology,general",
         json_schema_extra={"env": "RAG_TOPICS"}
     )
     
@@ -81,10 +82,10 @@ class Settings(BaseSettings):
     
     # Configuración MCP
     MCP_ENABLED: bool = Field(default=False, json_schema_extra={"env": "MCP_ENABLED"})
-    MCP_SERVERS: Dict[str, str] = Field(
-        default={}, 
+    MCP_SERVERS: Union[str, Dict[str, str]] = Field(
+        default="", 
         json_schema_extra={"env": "MCP_SERVERS"}
-    )  # formato: {"server_name": "server_url"}
+    )
     
     # Configuración de historial de chat
     CHAT_HISTORY_TYPE: str = Field(default="memory", json_schema_extra={"env": "CHAT_HISTORY_TYPE"})
@@ -94,22 +95,13 @@ class Settings(BaseSettings):
     METRICS_ENABLED: bool = Field(default=True, json_schema_extra={"env": "METRICS_ENABLED"})
     
     # Configuraciones específicas de especies y patologías
-    SPECIFIC_SPECIES: List[str] = Field(
-        default=[
-            "Malus domestica", "Prunus cerasus", "Vitis vinifera", 
-            "Citrus aurantium", "Prunus persica", "Fragaria vesca",
-            "Solanum lycopersicum", "Psidium guajava", "Syzygium cumini",
-            "Citrus limon", "Mangifera indica", "Punica granatum",
-            "Prunus armeniaca", "Vaccinium macrocarpon", "Pyrus communis"
-        ],
+    SPECIFIC_SPECIES: Union[str, List[str]] = Field(
+        default="Malus domestica,Prunus cerasus,Vitis vinifera,Citrus aurantium,Prunus persica,Fragaria vesca,Solanum lycopersicum,Psidium guajava,Syzygium cumini,Citrus limon,Mangifera indica,Punica granatum,Prunus armeniaca,Vaccinium macrocarpon,Pyrus communis",
         json_schema_extra={"env": "SPECIFIC_SPECIES"}
     )
     
-    PATHOLOGY_SPECIES: List[str] = Field(
-        default=[
-            "Malus domestica", "Vitis vinifera", "Citrus aurantium", 
-            "Solanum lycopersicum"
-        ],
+    PATHOLOGY_SPECIES: Union[str, List[str]] = Field(
+        default="Malus domestica,Vitis vinifera,Citrus aurantium,Solanum lycopersicum",
         json_schema_extra={"env": "PATHOLOGY_SPECIES"}
     )
 
@@ -117,31 +109,59 @@ class Settings(BaseSettings):
     @classmethod
     def parse_rag_topics(cls, v):
         """Parsea la lista de temáticas RAG desde string o lista"""
+        if v is None or v == "":
+            return ["plants", "pathology", "general"]
         if isinstance(v, str):
-            return [topic.strip() for topic in v.split(",")]
-        return v
+            # Limpiar y dividir por comas
+            topics = [topic.strip() for topic in v.split(",") if topic.strip()]
+            return topics if topics else ["plants", "pathology", "general"]
+        if isinstance(v, list):
+            return v
+        return ["plants", "pathology", "general"]
 
     @field_validator("SPECIFIC_SPECIES", "PATHOLOGY_SPECIES", mode="before")
     @classmethod
     def parse_species_lists(cls, v):
         """Parsea las listas de especies desde string o lista"""
+        if v is None or v == "":
+            return []
         if isinstance(v, str):
-            return [species.strip() for species in v.split(",")]
-        return v
+            species = [species.strip() for species in v.split(",") if species.strip()]
+            return species
+        if isinstance(v, list):
+            return v
+        return []
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def parse_cors_origins(cls, v):
         """Parsea orígenes CORS desde string o lista"""
+        if v is None or v == "":
+            return ["http://localhost:3000", "http://localhost:8080"]
         if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",")]
-        return v
+            # Intentar parsear como JSON primero
+            if v.startswith('[') and v.endswith(']'):
+                try:
+                    import json
+                    return json.loads(v)
+                except:
+                    pass
+            # Si no es JSON, dividir por comas
+            origins = [origin.strip() for origin in v.split(",") if origin.strip()]
+            return origins if origins else ["http://localhost:3000", "http://localhost:8080"]
+        if isinstance(v, list):
+            return v
+        return ["http://localhost:3000", "http://localhost:8080"]
 
     @field_validator("MCP_SERVERS", mode="before")
     @classmethod
     def parse_mcp_servers(cls, v):
         """Parsea servidores MCP desde string o dict"""
-        if isinstance(v, str) and v:
+        if v is None or v == "":
+            return {}
+        if isinstance(v, str):
+            if v.strip() == "":
+                return {}
             # Formato esperado: "server1:url1,server2:url2"
             servers = {}
             for pair in v.split(","):
@@ -149,7 +169,9 @@ class Settings(BaseSettings):
                     name, url = pair.split(":", 1)
                     servers[name.strip()] = url.strip()
             return servers
-        return v or {}
+        if isinstance(v, dict):
+            return v
+        return {}
 
     def get_vectorstore_path(self, topic: str) -> str:
         """Obtiene el path del vectorstore para una temática específica"""
@@ -164,7 +186,10 @@ class Settings(BaseSettings):
     @property
     def available_topics(self) -> List[str]:
         """Devuelve las temáticas RAG disponibles"""
-        return self.RAG_TOPICS
+        topics = self.RAG_TOPICS
+        if isinstance(topics, str):
+            return self.parse_rag_topics(topics)
+        return topics
 
     @property
     def is_production(self) -> bool:

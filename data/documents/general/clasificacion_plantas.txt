@@ -1,0 +1,39 @@
+La clasificación de las plantas se basa en características morfológicas, anatómicas y evolutivas.
+
+GRANDES GRUPOS:
+
+1. BRIÓFITOS (Musgos y hepáticas):
+- Sin tejidos vasculares
+- Dependientes del agua para reproducción
+- Gametófito dominante
+
+2. PTERIDÓFITOS (Helechos):
+- Con tejidos vasculares
+- Sin semillas
+- Esporófito dominante
+- Reproducción por esporas
+
+3. GIMNOSPERMAS:
+- Semillas desnudas
+- Hojas aciculares o escamosas
+- Flores unisexuales
+- Ejemplos: pinos, abetos, cipreses
+
+4. ANGIOSPERMAS:
+- Semillas protegidas en frutos
+- Flores con pétalos y sépalos
+- Mayor diversidad vegetal
+
+SUBDIVISIÓN DE ANGIOSPERMAS:
+
+MONOCOTILEDÓNEAS:
+- Un cotiledón en la semilla
+- Hojas con nerviación paralela
+- Flores trímeras
+- Ejemplos: gramíneas, orquídeas
+
+DICOTILEDÓNEAS:
+- Dos cotiledones en la semilla
+- Hojas con nerviación reticulada
+- Flores tetrámeras o pentámeras
+- Ejemplos: rosales, leguminosas

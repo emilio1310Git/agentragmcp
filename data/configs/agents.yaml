@@ -1,0 +1,211 @@
+# Configuración de agentes para AgentRagMCP
+# Define las características y capacidades de cada agente especializado
+
+agents:
+  plants:
+    name: "plants"
+    description: "Especialista en información general de plantas, cultivo y botánica"
+    class: "PlantsAgent"
+    topics: ["plants"]
+    enabled: true
+    priority: 1
+    
+    # Configuración específica del agente
+    config:
+      max_confidence: 1.0
+      min_confidence: 0.1
+      fallback_enabled: false
+      
+      # Palabras clave principales
+      primary_keywords:
+        - "planta"
+        - "plantas" 
+        - "árbol"
+        - "árboles"
+        - "cultivo"
+        - "cultivar"
+        - "sembrar"
+        - "plantar"
+        - "jardín"
+        - "huerto"
+        - "botánica"
+        
+      # Patrones de reconocimiento
+      patterns:
+        - "cómo.*cultivar"
+        - "cuándo.*plantar"
+        - "qué.*planta"
+        - "características.*de"
+        - "cuidados.*de"
+        - "información.*sobre"
+        
+      # Especies específicas (se complementa con SPECIFIC_SPECIES del .env)
+      target_species:
+        - "malus domestica"
+        - "prunus cerasus" 
+        - "vitis vinifera"
+        - "citrus aurantium"
+        - "prunus persica"
+        - "fragaria vesca"
+        - "solanum lycopersicum"
+        
+    # Métricas y umbrales
+    thresholds:
+      keyword_weight: 0.3
+      species_weight: 0.5
+      pattern_weight: 0.2
+      context_bonus: 0.2
+
+  pathology:
+    name: "pathology"
+    description: "Especialista en patologías, enfermedades, plagas y tratamientos de plantas"
+    class: "PathologyAgent"
+    topics: ["pathology"]
+    enabled: true
+    priority: 2
+    
+    config:
+      max_confidence: 1.0
+      min_confidence: 0.1
+      fallback_enabled: false
+      
+      # Palabras clave de patologías
+      primary_keywords:
+        - "enfermedad"
+        - "enfermedades"
+        - "patología"
+        - "patologías"
+        - "plaga"
+        - "plagas"
+        - "hongo"
+        - "hongos"
+        - "bacteria"
+        - "bacterias"
+        - "virus"
+        - "tratamiento"
+        - "síntomas"
+        - "control"
+        
+      # Síntomas específicos
+      symptom_keywords:
+        - "mancha"
+        - "manchas"
+        - "amarilleo"
+        - "marchitez"
+        - "podredumbre"
+        - "necrosis"
+        - "lesión"
+        - "deformación"
+        
+      # Patrones de diagnóstico
+      patterns:
+        - "qué.*enfermedad"
+        - "cómo.*tratar"
+        - "síntomas.*de"
+        - "problema.*con"
+        - "se.*está.*muriendo"
+        - "hojas.*amarillas"
+        - "manchas.*en"
+        
+      # Especies con conocimiento de patologías
+      target_species:
+        - "malus domestica"
+        - "vitis vinifera"
+        - "citrus aurantium"
+        - "solanum lycopersicum"
+        
+    thresholds:
+      keyword_weight: 0.5
+      symptom_weight: 0.3
+      species_weight: 0.3
+      pattern_weight: 0.4
+
+  general:
+    name: "general"
+    description: "Asistente general para consultas diversas sobre plantas y botánica"
+    class: "GeneralAgent"
+    topics: ["general"]
+    enabled: true
+    priority: 3
+    
+    config:
+      max_confidence: 0.8  # Menor que especialistas
+      min_confidence: 0.1
+      fallback_enabled: true
+      
+      # Palabras clave educativas
+      primary_keywords:
+        - "qué es"
+        - "qué son"
+        - "cómo funciona"
+        - "por qué"
+        - "explicar"
+        - "definir"
+        - "botánica"
+        - "información"
+        - "curiosidades"
+        
+      # Patrones educativos
+      patterns:
+        - "qué.*es.*la?"
+        - "cómo.*funciona"
+        - "por.*qué.*las?.*plantas"
+        - "diferencia.*entre"
+        - "tipos.*de.*plantas"
+        - "información.*general"
+        
+    thresholds:
+      base_confidence: 0.2  # Confianza base como fallback
+      educational_bonus: 0.3
+      general_bonus: 0.2
+      fallback_penalty: -0.1
+
+# Configuración del selector de agentes
+selector:
+  # Método de selección: "rule_based", "llm_based", "hybrid"
+  selection_method: "hybrid"
+  
+  # Configuración para selección basada en reglas
+  rule_based:
+    enabled: true
+    confidence_threshold: 0.3
+    
+  # Configuración para selección basada en LLM
+  llm_based:
+    enabled: true
+    min_agents_for_llm: 3  # Usar LLM solo si hay 3+ agentes
+    temperature: 0.1
+    
+  # Configuración híbrida
+  hybrid:
+    primary_method: "rule_based"
+    fallback_method: "llm_based"
+    llm_threshold: 0.5  # Usar LLM si ningún agente supera este umbral
+    
+# Configuración de métricas y logging
+metrics:
+  track_agent_performance: true
+  track_selection_accuracy: true
+  log_confidence_scores: true
+  
+  # Umbrales de alerta
+  alerts:
+    low_success_rate: 0.5
+    high_error_rate: 0.2
+    no_agent_selected_threshold: 0.1
+
+# Configuración de health checks
+health_checks:
+  enabled: true
+  check_interval_minutes: 5
+  
+  checks:
+    - "rag_service_availability"
+    - "topic_availability" 
+    - "agent_success_rates"
+    - "response_times"
+    
+  thresholds:
+    max_response_time_seconds: 30
+    min_success_rate: 0.7
+    max_error_rate: 0.3

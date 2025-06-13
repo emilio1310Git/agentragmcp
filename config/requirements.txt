@@ -37,7 +37,7 @@ structlog==25.4.0
 python-json-logger==3.3.0
 
 # === SECURITY ===
-python-jose[cryptography]==3..0
+python-jose[cryptography]==3.5.0
 passlib[bcrypt]==1.7.4
 
 # === TESTING (development) ===
@@ -50,7 +50,7 @@ pytest-mock==3.14.1
 black==25.1.0
 isort==6.0.1
 flake8==7.2.0
-mypy==2.3.0
+mypy==1.16.0
 
 # === OPTIONAL: MCP SUPPORT ===
 # mcp==1.9.4  # Uncomment when MCP library is available

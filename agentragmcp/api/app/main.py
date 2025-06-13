@@ -99,13 +99,24 @@ def create_application() -> FastAPI:
     app.logger = app_logger
     
     # Configurar CORS
+    if settings.ENVIRONMENT == "development":
+        # En desarrollo, usar configuración más permisiva
+        allowed_origins = ["*"]  # Permitir todos los orígenes en desarrollo
+        allow_credentials = False  # No credentials con "*"
+    else:
+        # En producción, ser más restrictivo
+        allowed_origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
+        if not allowed_origins or not allowed_origins[0]:
+            allowed_origins = ["https://example.com"]
+        allow_credentials = True
+    
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.CORS_ORIGINS,
-        allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "DELETE"],
+        allow_origins=allowed_origins,
+        allow_credentials=allow_credentials,
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["*"],
-        expose_headers=["X-Request-ID"],
+        expose_headers=["Content-Disposition", "X-Request-ID"],
     )
     
     # Middleware para request ID

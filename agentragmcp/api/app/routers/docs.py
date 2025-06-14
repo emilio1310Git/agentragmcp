@@ -1,7 +1,7 @@
 from fastapi import APIRouter,Request
 from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
-from senfast.core.logger import logger
-from senfast.core.config import get_settings
+from agentragmcp.core.logger import logger
+from agentragmcp.core.config import get_settings
 
 settings = get_settings()
 router = APIRouter(prefix="", tags=["Documentation"])

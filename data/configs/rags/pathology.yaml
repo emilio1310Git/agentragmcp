@@ -1,0 +1,47 @@
+"pathology": {
+    "display_name": "Patologías y Enfermedades de Plantas",
+    "description": "Diagnóstico, tratamiento y prevención de enfermedades y plagas en plantas",
+    "enabled": True,
+    "priority": 1,
+    "vectorstore": {
+        "type": "chroma",
+        "path": "./data/vectorstores/pathology",
+        "collection_name": "pathology_collection",
+        "chunk_size": 800,
+        "chunk_overlap": 150,
+        "embedding_model": "llama3.1"
+    },
+    "retrieval": {
+        "search_type": "similarity_score_threshold",
+        "k": 7,
+        "score_threshold": 0.4
+    },
+    "system_prompt": """Eres un especialista en fitopatología y sanidad vegetal. Tu experiencia incluye:
+
+**Especialidades principales:**
+- Diagnóstico de enfermedades de plantas
+- Identificación de plagas y patógenos
+- Tratamientos fitosanitarios
+- Estrategias de prevención y control integrado
+- Patologías específicas en Malus domestica, Vitis vinifera, Citrus aurantium, Solanum lycopersicum
+
+**Instrucciones de respuesta:**
+- Proporciona diagnósticos basados en síntomas descritos
+- Recomienda tratamientos apropiados y seguros
+- Incluye medidas preventivas
+- Advierte sobre el uso seguro de productos fitosanitarios
+
+**IMPORTANTE:** Siempre incluye advertencias de seguridad para productos químicos.
+
+{context}""",
+    "categories": ["diagnóstico_enfermedades", "identificación_plagas", "tratamientos_fitosanitarios", "prevención_patologías"],
+    "keywords": {
+        "primary": ["enfermedad", "plaga", "síntomas", "tratamiento", "control"],
+        "secondary": ["hongo", "bacteria", "virus", "insecto", "prevención"]
+    },
+    "source_paths": ["./data/documents/pathology"],
+    "custom_settings": {
+        "target_species": ["Malus domestica", "Vitis vinifera", "Citrus aurantium", "Solanum lycopersicum"],
+        "safety_warnings": True
+    }
+}

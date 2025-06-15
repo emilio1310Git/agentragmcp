@@ -322,8 +322,35 @@ class DynamicAgentLoader:
             return None
         
         try:
-            # Crear instancia
-            agent = agent_class(config, rag_service)
+            # CORRECCIÓN: Verificar si es DynamicAgent que requiere constructor especial
+            if agent_class == DynamicAgent:
+                # DynamicAgent requiere (agent_name, config_dict, rag_service)
+                # Convertir AgentConfig a diccionario
+                config_dict = {
+                    "description": config.description,
+                    "class": config.class_name,
+                    "topics": config.topics,
+                    "enabled": config.enabled,
+                    "priority": config.priority,
+                    "config": {
+                        "max_confidence": config.max_confidence,
+                        "min_confidence": config.min_confidence,
+                        "primary_keywords": config.primary_keywords,
+                        "secondary_keywords": config.secondary_keywords,
+                        "patterns": config.patterns,
+                        "target_species": config.target_species
+                    },
+                    "thresholds": {
+                        "keyword_weight": config.keyword_weight,
+                        "species_weight": config.species_weight,
+                        "pattern_weight": config.pattern_weight
+                    }
+                }
+                agent = agent_class(config.name, config_dict, rag_service)
+            else:
+                # Para todas las demás clases (ConfigurableAgent y subclases)
+                agent = agent_class(config, rag_service)
+            
             logger.info(f"Agente creado: {config.name} ({config.class_name})")
             return agent
             

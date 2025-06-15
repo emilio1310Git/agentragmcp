@@ -10,6 +10,8 @@ langchain-community== 0.3.25
 langchain-chroma==0.2.4
 langchain-ollama==0.3.3
 
+unstructured==0.17.2
+
 # === VECTOR DATABASES ===
 chromadb==1.0.12
 

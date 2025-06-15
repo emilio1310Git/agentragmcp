@@ -273,11 +273,198 @@ class ConfigManager:
             logger.error(f"Error cargando configuración de agente {agent_name}: {e}")
             return None
     
-    def create_sample_configs(self):
-        """Crea configuraciones de ejemplo"""
-        self._create_sample_rag_configs()
-        self._create_sample_agent_config()
-        logger.info("Configuraciones de ejemplo creadas")
+    def create_sample_configs(self) -> bool:
+        """Crea configuraciones de ejemplo mejoradas"""
+        
+        try:
+            # Crear directorios
+            self.config_base_path.mkdir(parents=True, exist_ok=True)
+            (self.config_base_path / "rags").mkdir(exist_ok=True)
+            
+            # 1. Configuración de RAGs mejorada
+            sample_rags = {
+                "plants": {
+                    "name": "plants",
+                    "display_name": "Plantas y Botánica",
+                    "description": "Información sobre plantas, cultivo y botánica general",
+                    "enabled": True,
+                    "priority": 1,
+                    "vectorstore": {
+                        "type": "chroma",
+                        "path": "./data/vectorstores/plants"
+                    },
+                    "retrieval": {
+                        "search_type": "mmr",
+                        "k": 5,
+                        "fetch_k": 20
+                    },
+                    "embedding": {
+                        "model": "llama3.1",
+                        "chunk_size": 1000,
+                        "chunk_overlap": 200
+                    }
+                },
+                "pathology": {
+                    "name": "pathology", 
+                    "display_name": "Patologías Vegetales",
+                    "description": "Diagnóstico y tratamiento de enfermedades en plantas",
+                    "enabled": True,
+                    "priority": 1,
+                    "vectorstore": {
+                        "type": "chroma",
+                        "path": "./data/vectorstores/pathology"
+                    },
+                    "retrieval": {
+                        "search_type": "mmr",
+                        "k": 4,
+                        "fetch_k": 15
+                    },
+                    "embedding": {
+                        "model": "llama3.1",
+                        "chunk_size": 800,
+                        "chunk_overlap": 150
+                    }
+                },
+                "general": {
+                    "name": "general",
+                    "display_name": "Conocimiento General",  
+                    "description": "Información educativa y divulgativa",
+                    "enabled": True,
+                    "priority": 2,
+                    "vectorstore": {
+                        "type": "chroma",
+                        "path": "./data/vectorstores/general"
+                    },
+                    "retrieval": {
+                        "search_type": "similarity",
+                        "k": 4
+                    },
+                    "embedding": {
+                        "model": "llama3.1",
+                        "chunk_size": 1200,
+                        "chunk_overlap": 250
+                    }
+                }
+            }
+            
+            # Guardar configuraciones RAG
+            for topic, config in sample_rags.items():
+                config_file = self.config_base_path / "rags" / f"{topic}.yaml"
+                with open(config_file, 'w', encoding='utf-8') as f:
+                    yaml.dump(config, f, default_flow_style=False, allow_unicode=True)
+            
+            # 2. Configuración de agentes mejorada
+            sample_agents = {
+                "agents": {
+                    "plants": {
+                        "description": "Especialista en plantas y botánica general",
+                        "class": "GenericRAGAgent",
+                        "topics": ["plants"],
+                        "enabled": True,
+                        "priority": 1,
+                        "config": {
+                            "max_confidence": 1.0,
+                            "min_confidence": 0.1,
+                            "primary_keywords": [
+                                "planta", "cultivo", "jardinería", "botánica",
+                                "riego", "poda", "fertilizante", "semilla"
+                            ],
+                            "secondary_keywords": [
+                                "manzano", "tomate", "vid", "huerto", "jardín"
+                            ],
+                            "patterns": [
+                                r"¿?[Cc]ómo (cuidar|cultivar|plantar)",
+                                r"¿?[Cc]uándo (plantar|sembrar|podar)",
+                                r"[Cc]aracterísticas de.*"
+                            ],
+                            "target_species": [
+                                "Malus domestica", "Solanum lycopersicum", "Vitis vinifera"
+                            ]
+                        },
+                        "thresholds": {
+                            "keyword_weight": 0.3,
+                            "species_weight": 0.5,
+                            "pattern_weight": 0.2
+                        }
+                    },
+                    
+                    "pathology": {
+                        "description": "Especialista en diagnóstico de enfermedades vegetales",
+                        "class": "GenericRAGAgent", 
+                        "topics": ["pathology"],
+                        "enabled": True,
+                        "priority": 1,
+                        "config": {
+                            "max_confidence": 1.0,
+                            "min_confidence": 0.1,
+                            "primary_keywords": [
+                                "enfermedad", "plaga", "síntomas", "tratamiento",
+                                "hongo", "bacteria", "virus", "control"
+                            ],
+                            "secondary_keywords": [
+                                "mildiu", "oídio", "sarna", "pulgón", "prevención"
+                            ],
+                            "patterns": [
+                                r"¿?[Qq]ué enfermedad",
+                                r"[Ss]íntomas de",
+                                r"[Cc]ómo tratar",
+                                r"[Tt]ratamiento para"
+                            ],
+                            "target_species": [
+                                "Malus domestica", "Vitis vinifera"
+                            ]
+                        },
+                        "thresholds": {
+                            "keyword_weight": 0.4,
+                            "species_weight": 0.3,
+                            "pattern_weight": 0.3
+                        }
+                    },
+                    
+                    "general": {
+                        "description": "Conocimiento general y educativo sobre plantas",
+                        "class": "GenericRAGAgent",
+                        "topics": ["general"],
+                        "enabled": True,
+                        "priority": 2,
+                        "config": {
+                            "max_confidence": 0.8,
+                            "min_confidence": 0.1,
+                            "primary_keywords": [
+                                "qué es", "cómo funciona", "explicar", "definir",
+                                "fotosíntesis", "clasificación", "biología"
+                            ],
+                            "secondary_keywords": [
+                                "educación", "ciencia", "proceso", "función"
+                            ],
+                            "patterns": [
+                                r"¿?[Qq]ué es",
+                                r"¿?[Cc]ómo funciona",
+                                r"[Ee]xplic(ar|ame)",
+                                r"[Dd]iferencia entre"
+                            ]
+                        },
+                        "thresholds": {
+                            "keyword_weight": 0.5,
+                            "species_weight": 0.1,
+                            "pattern_weight": 0.4
+                        }
+                    }
+                }
+            }
+            
+            # Guardar configuración de agentes
+            agents_file = self.config_base_path / "agents.yaml"
+            with open(agents_file, 'w', encoding='utf-8') as f:
+                yaml.dump(sample_agents, f, default_flow_style=False, allow_unicode=True)
+            
+            logger.info("Configuraciones de ejemplo creadas exitosamente")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error creando configuraciones de ejemplo: {e}")
+            return False
+
     
     def _create_sample_rag_configs(self):
         """Crea configuraciones RAG de ejemplo"""

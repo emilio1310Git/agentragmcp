@@ -1,47 +1,70 @@
-            "display_name": "Agricultura Ecológica y Sostenible",
-            "description": "Técnicas de agricultura ecológica, sostenible y permacultura",
-            "enabled": True,
-            "priority": 2,
-            "vectorstore": {
-                "type": "chroma",
-                "path": "./data/vectorstores/eco_agriculture",
-                "collection_name": "eco_agriculture_collection",
-                "chunk_size": 1200,
-                "chunk_overlap": 300,
-                "embedding_model": "llama3.1"
-            },
-            "retrieval": {
-                "search_type": "mmr",
-                "k": 6,
-                "fetch_k": 25,
-                "lambda_mult": 0.8,
-                "score_threshold": 0.5
-            },
-            "system_prompt": """Eres un especialista en agricultura ecológica y sostenible.
+eco_agriculture:
+  display_name: "Agricultura Ecológica y Sostenible"
+  description: "Técnicas de agricultura ecológica, sostenible y permacultura"
+  enabled: true
+  priority: 2
+  vectorstore:
+    type: "chroma"
+    path: "./data/vectorstores/eco_agriculture"
+    collection_name: "eco_agriculture_collection"
+    chunk_size: 1200
+    chunk_overlap: 300
+    embedding_model: "llama3.1"
+    embedding_base_url: "http://localhost:11434" # Añadido basándome en ejemplos anteriores para consistencia
+  retrieval:
+    search_type: "mmr"
+    k: 6
+    fetch_k: 25
+    lambda_mult: 0.8
+    score_threshold: 0.5
+  system_prompt: |-
+    Eres un especialista en agricultura ecológica y sostenible.
 
-**Especialidades principales:**
-- Técnicas de agricultura ecológica certificada
-- Permacultura y diseño sostenible
-- Manejo natural de plagas y enfermedades
-- Mejora de la salud del suelo sin químicos
-- Biodiversidad y conservación
+    **Especialidades principales:**
+    - Técnicas de agricultura ecológica certificada
+    - Permacultura y diseño sostenible
+    - Manejo natural de plagas y enfermedades
+    - Mejora de la salud del suelo sin químicos
+    - Biodiversidad y conservación
 
-**Enfoque:**
-- Prioriza siempre métodos naturales y sostenibles
-- Explica el impacto ambiental de las prácticas
-- Incluye aspectos de certificación orgánica cuando sea relevante
-- Fomenta la biodiversidad y el equilibrio ecológico
+    **Enfoque:**
+    - Prioriza siempre métodos naturales y sostenibles
+    - Explica el impacto ambiental de las prácticas
+    - Incluye aspectos de certificación orgánica cuando sea relevante
+    - Fomenta la biodiversidad y el equilibrio ecológico
 
-{context}""",
-            "categories": ["agricultura_ecológica", "sostenibilidad", "permacultura", "biodiversidad"],
-            "keywords": {
-                "primary": ["ecológico", "orgánico", "sostenible", "permacultura", "natural"],
-                "secondary": ["compost", "biodiversidad", "equilibrio", "certificado", "sin químicos"]
-            },
-            "source_paths": ["./data/documents/eco_agriculture"],
-            "custom_settings": {
-                "certification_standards": ["EU_Organic", "USDA_Organic", "JAS_Organic"],
-                "focus_areas": ["soil_health", "biodiversity", "water_conservation", "energy_efficiency"],
-                "avoid_recommendations": ["synthetic_pesticides", "chemical_fertilizers", "gmo_seeds"]
-            }
-        }
+    {context}
+  categories:
+    - "agricultura_ecológica"
+    - "sostenibilidad"
+    - "permacultura"
+    - "biodiversidad"
+  keywords:
+    primary:
+      - "ecológico"
+      - "orgánico"
+      - "sostenible"
+      - "permacultura"
+      - "natural"
+    secondary:
+      - "compost"
+      - "biodiversidad"
+      - "equilibrio"
+      - "certificado"
+      - "sin químicos"
+  source_paths:
+    - "./data/documents/eco_agriculture"
+  custom_settings:
+    certification_standards:
+      - "EU_Organic"
+      - "USDA_Organic"
+      - "JAS_Organic"
+    focus_areas:
+      - "soil_health"
+      - "biodiversity"
+      - "water_conservation"
+      - "energy_efficiency"
+    avoid_recommendations:
+      - "synthetic_pesticides"
+      - "chemical_fertilizers"
+      - "gmo_seeds"

@@ -1,169 +1,186 @@
-"agents": {
-    "plants": {
-        "description": "Especialista en información general de plantas, cultivo y botánica",
-        "class": "PlantsAgent",
-        "topics": ["plants"],
-        "enabled": True,
-        "priority": 1,
-        "config": {
-            "max_confidence": 1.0,
-            "min_confidence": 0.1,
-            "fallback_enabled": False,
-            "primary_keywords": [
-                "planta", "plantas", "árbol", "árboles", "cultivo", "cultivar",
-                "sembrar", "plantar", "jardín", "huerto", "botánica", "especie",
-                "fruto", "hoja", "flor", "raíz", "crecimiento", "cuidado"
-            ],
-            "patterns": [
-                "cómo.*cultivar", "cuándo.*plantar", "qué.*planta",
-                "características.*de", "cuidados.*de", "información.*sobre"
-            ],
-            "target_species": [
-                "Malus domestica", "Prunus cerasus", "Vitis vinifera",
-                "Citrus aurantium", "Prunus persica", "Fragaria vesca",
-                "Solanum lycopersicum"
-            ],
-            "common_names": [
-                "manzano", "manzana", "cerezo", "cereza", "vid", "uva",
-                "naranjo", "naranja", "tomate", "tomatera"
-            ]
-        }
-    },
+agents:
+  plants:
+    description: "Especialista en información general de plantas, cultivo y botánica"
+    class: "PlantsAgent"
+    topics:
+      - "plants"
+    enabled: true
+    priority: 1
+    config:
+      max_confidence: 1.0
+      min_confidence: 0.1
+      fallback_enabled: false
+      primary_keywords:
+        - "planta"
+        - "plantas"
+        - "árbol"
+        - "árboles"
+        - "cultivo"
+        - "cultivar"
+        - "sembrar"
+        - "plantar"
+        - "jardín"
+        - "huerto"
+        - "botánica"
+        - "especie"
+        - "fruto"
+        - "hoja"
+        - "flor"
+        - "raíz"
+        - "crecimiento"
+        - "cuidado"
+      patterns:
+        - "cómo.*cultivar"
+        - "cuándo.*plantar"
+        - "qué.*planta"
+        - "características.*de"
+        - "cuidados.*de"
+        - "información.*sobre"
+      target_species:
+        - "Malus domestica"
+        - "Prunus cerasus"
+        - "Vitis vinifera"
+        - "Citrus aurantium"
+        - "Prunus persica"
+        - "Fragaria vesca"
+        - "Solanum lycopersicum"
+      common_names:
+        - "manzano"
+        - "manzana"
+        - "cerezo"
+        - "cereza"
+        - "vid"
+        - "uva"
+        - "naranjo"
+        - "naranja"
+        - "tomate"
+        - "tomatera"
+  pathology: # Ten en cuenta que "pathology" aparece dos veces como clave principal, lo cual sobrescribirá la primera.
+    description: "Especialista en patologías, enfermedades, plagas y tratamientos de plantas"
+    class: "PathologyAgent"
+    topics:
+      - "pathology"
+    enabled: true
+    priority: 2
+    config:
+      max_confidence: 1.0
+      min_confidence: 0.1
+      fallback_enabled: false
+      primary_keywords:
+        - "enfermedad"
+        - "enfermedades"
+        - "patología"
+        - "patologías"
+        - "plaga"
+        - "plagas"
+        - "hongo"
+        - "hongos"
+        - "bacteria"
+        - "bacterias"
+        - "virus"
+        - "tratamiento"
+        - "síntomas"
+        - "control"
+        - "mancha"
+        - "manchas"
+      patterns:
+        - "qué.*enfermedad"
+        - "cómo.*tratar"
+        - "síntomas.*de"
+        - "problema.*con"
+        - "se.*está.*muriendo"
+        - "hojas.*amarillas"
+      target_species:
+        - "Malus domestica"
+        - "Vitis vinifera"
+        - "Citrus aurantium"
+        - "Solanum lycopersicum"
+    thresholds:
+      keyword_weight: 0.5
+      symptom_weight: 0.3
+      species_weight: 0.3
+      pattern_weight: 0.4
+  general:
+    description: "Asistente general para consultas diversas sobre plantas y botánica"
+    class: "GeneralAgent"
+    topics:
+      - "general"
+    enabled: true
+    priority: 3
+    config:
+      max_confidence: 0.8
+      min_confidence: 0.1
+      fallback_enabled: true
+      primary_keywords:
+        - "qué es"
+        - "qué son"
+        - "cómo funciona"
+        - "por qué"
+        - "explicar"
+        - "definir"
+        - "botánica"
+        - "información"
+      patterns:
+        - "qué.*es.*la?"
+        - "cómo.*funciona"
+        - "por.*qué.*las?.*plantas"
+        - "diferencia.*entre"
+        - "tipos.*de.*plantas"
+    thresholds:
+      base_confidence: 0.2
+      educational_bonus: 0.3
+      general_bonus: 0.2
+  eco_agriculture:
+    description: "Especialista en agricultura ecológica y sostenible"
+    class: "EcoAgricultureAgent"
+    module_path: "./agentragmcp/custom_agents/eco_agriculture_agent.py"
+    topics:
+      - "eco_agriculture"
+    enabled: true
+    priority: 2
+    config:
+      max_confidence: 0.9
+      min_confidence: 0.1
+      fallback_enabled: false
+      primary_keywords:
+        - "ecológico"
+        - "orgánico"
+        - "sostenible"
+        - "natural"
+        - "biodiversidad"
+        - "permacultura"
+        - "compost"
+        - "biológico"
+        - "certificado"
+      patterns:
+        - "agricultura.*ecológica"
+        - "método.*natural"
+        - "sin.*químicos"
+        - "cultivo.*orgánico"
+        - "permacultura"
+    thresholds:
+      keyword_weight: 0.4
+      sustainability_weight: 0.4
+      pattern_weight: 0.2
 
-    "pathology": {
-        "description": "Especialista en patologías, enfermedades, plagas y tratamientos de plantas",
-        "class": "PathologyAgent",
-        "topics": ["pathology"],
-        "enabled": True,
-        "priority": 2,
-        "config": {
-            "max_confidence": 1.0,
-        }
-    },
-    
-    "pathology": {
-        "description": "Especialista en patologías, enfermedades, plagas y tratamientos de plantas",
-        "class": "PathologyAgent",
-        "topics": ["pathology"],
-        "enabled": True,
-        "priority": 2,
-        "config": {
-            "max_confidence": 1.0,
-            "min_confidence": 0.1,
-            "fallback_enabled": False,
-            "primary_keywords": [
-                "enfermedad", "enfermedades", "patología", "patologías",
-                "plaga", "plagas", "hongo", "hongos", "bacteria", "bacterias",
-                "virus", "tratamiento", "síntomas", "control", "mancha", "manchas"
-            ],
-            "patterns": [
-                "qué.*enfermedad", "cómo.*tratar", "síntomas.*de",
-                "problema.*con", "se.*está.*muriendo", "hojas.*amarillas"
-            ],
-            "target_species": [
-                "Malus domestica", "Vitis vinifera", 
-                "Citrus aurantium", "Solanum lycopersicum"
-            ]
-        },
-        "thresholds": {
-            "keyword_weight": 0.5,
-            "symptom_weight": 0.3,
-            "species_weight": 0.3,
-            "pattern_weight": 0.4
-        }
-    },
-    
-    "general": {
-        "description": "Asistente general para consultas diversas sobre plantas y botánica",
-        "class": "GeneralAgent",
-        "topics": ["general"],
-        "enabled": True,
-        "priority": 3,
-        "config": {
-            "max_confidence": 0.8,
-            "min_confidence": 0.1,
-            "fallback_enabled": True,
-            "primary_keywords": [
-                "qué es", "qué son", "cómo funciona", "por qué",
-                "explicar", "definir", "botánica", "información"
-            ],
-            "patterns": [
-                "qué.*es.*la?", "cómo.*funciona", "por.*qué.*las?.*plantas",
-                "diferencia.*entre", "tipos.*de.*plantas"
-            ]
-        },
-        "thresholds": {
-            "base_confidence": 0.2,
-            "educational_bonus": 0.3,
-            "general_bonus": 0.2
-        }
-    },
-    "eco_agriculture": {
-        "description": "Especialista en agricultura ecológica y sostenible",
-        "class": "EcoAgricultureAgent",
-        "module_path": "./agentragmcp/custom_agents/eco_agriculture_agent.py",
-            "topics": ["eco_agriculture"],
-            "enabled": True,
-            "priority": 2,
-            "config": {
-                "max_confidence": 0.9,
-                "min_confidence": 0.1,
-                "fallback_enabled": False,
-                "primary_keywords": [
-                    "ecológico", "orgánico", "sostenible", "natural", "biodiversidad",
-                    "permacultura", "compost", "biológico", "certificado"
-                ],
-                "patterns": [
-                    "agricultura.*ecológica", "método.*natural", "sin.*químicos",
-                    "cultivo.*orgánico", "permacultura"
-                ]
-            },
-            "thresholds": {
-                "keyword_weight": 0.4,
-                "sustainability_weight": 0.4,
-                "pattern_weight": 0.2
-            }
-        }    
-# agents:
-  # mi_agente:
-  #   description: "Descripción del agente"
-  #   class: "GenericRAGAgent"  # Usa agente genérico
-  #   topics: ["mi_nueva_tematica"]
-  #   enabled: true
-  #   priority: 2
-  #   config:
-  #     primary_keywords: ["palabra1", "palabra2"]
-  #     patterns: ["patrón.*regex"]
-  #     target_species: ["Especie específica"]
-  #   thresholds:
-  #     keyword_weight: 0.4
-  #     pattern_weight: 0.3    
-},
-"selector": {
-    "selection_method": "hybrid",
-    "rule_based": {
-        "enabled": True,
-        "confidence_threshold": 0.3
-    },
-    "llm_based": {
-        "enabled": True,
-        "min_agents_for_llm": 3,
-        "temperature": 0.1
-    },
-    "hybrid": {
-        "primary_method": "rule_based",
-        "fallback_method": "llm_based",
-        "llm_threshold": 0.5
-    }
-},
+selector:
+  selection_method: "hybrid"
+  rule_based:
+    enabled: true
+    confidence_threshold: 0.3
+  llm_based:
+    enabled: true
+    min_agents_for_llm: 3
+    temperature: 0.1
+  hybrid:
+    primary_method: "rule_based"
+    fallback_method: "llm_based"
+    llm_threshold: 0.5
 
-"metrics": {
-    "track_agent_performance": True,
-    "track_selection_accuracy": True,
-    "log_confidence_scores": True,
-    "alerts": {
-        "low_success_rate": 0.5,
-        "high_error_rate": 0.2
-    }
-}
-
+metrics:
+  track_agent_performance: true
+  track_selection_accuracy: true
+  log_confidence_scores: true
+  alerts:
+    low_success_rate: 0.5
+    high_error_rate: 0.2

@@ -1,39 +1,53 @@
-"general": {
-    "display_name": "Conocimiento General de Plantas",
-    "description": "Información educativa y divulgativa sobre el mundo vegetal",
-    "enabled": True,
-    "priority": 2,
-    "vectorstore": {
-        "type": "chroma",
-        "path": "./data/vectorstores/general",
-        "collection_name": "general_collection",
-        "chunk_size": 1200,
-        "chunk_overlap": 250
-    },
-    "retrieval": {
-        "search_type": "mmr",
-        "k": 4,
-        "fetch_k": 15,
-        "lambda_mult": 0.8
-    },
-    "system_prompt": """Eres un educador y divulgador científico especializado en botánica.
-**Especialidades principales:**
-- Educación botánica general
-- Divulgación científica del mundo vegetal
-- Conceptos fundamentales de biología vegetal
-- Historia natural y evolución de plantas
+general:
+  display_name: "Conocimiento General de Plantas"
+  description: "Información educativa y divulgativa sobre el mundo vegetal"
+  enabled: true
+  priority: 2
+  vectorstore:
+    type: "chroma"
+    path: "./data/vectorstores/general"
+    collection_name: "general_collection"
+    chunk_size: 1200
+    chunk_overlap: 250
+    embedding_model: "llama3.1" # Añadido basándome en ejemplos anteriores, si es consistente
+    embedding_base_url: "http://localhost:11434" # Añadido basándome en ejemplos anteriores
+  retrieval:
+    search_type: "mmr"
+    k: 4
+    fetch_k: 15
+    lambda_mult: 0.8
+    score_threshold: 0.5 # Añadido basándome en ejemplos anteriores, si es consistente
+  system_prompt: |-
+    Eres un educador y divulgador científico especializado en botánica.
+    **Especialidades principales:**
+    - Educación botánica general
+    - Divulgación científica del mundo vegetal
+    - Conceptos fundamentales de biología vegetal
+    - Historia natural y evolución de plantas
 
-**Instrucciones de respuesta:**
-- Explica conceptos complejos de manera accesible
-- Proporciona ejemplos concretos y analogías
-- Incluye datos curiosos e interesantes
-- Responde de forma clara, educativa y motivadora
+    **Instrucciones de respuesta:**
+    - Explica conceptos complejos de manera accesible
+    - Proporciona ejemplos concretos y analogías
+    - Incluye datos curiosos e interesantes
+    - Responde de forma clara, educativa y motivadora
 
-{context}""",
-    "categories": ["educación_botánica", "conceptos_básicos", "divulgación_científica"],
-    "keywords": {
-        "primary": ["qué es", "cómo funciona", "por qué", "explicar", "botánica"],
-        "secondary": ["definición", "concepto", "información", "curiosidades", "aprender"]
-    },
-    "source_paths": ["./data/documents/general"]
-}
+    {context}
+  categories:
+    - "educación_botánica"
+    - "conceptos_básicos"
+    - "divulgación_científica"
+  keywords:
+    primary:
+      - "qué es"
+      - "cómo funciona"
+      - "por qué"
+      - "explicar"
+      - "botánica"
+    secondary:
+      - "definición"
+      - "concepto"
+      - "información"
+      - "curiosidades"
+      - "aprender"
+  source_paths:
+    - "./data/documents/general"

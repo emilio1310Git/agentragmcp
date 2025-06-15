@@ -1,46 +1,69 @@
-            "display_name": "Jardinería Urbana y Espacios Pequeños",
-            "description": "Cultivo en espacios urbanos, balcones, terrazas y jardines pequeños",
-            "enabled": True,
-            "priority": 2,
-            "vectorstore": {
-                "type": "chroma",
-                "path": "./data/vectorstores/urban_gardening",
-                "collection_name": "urban_gardening_collection",
-                "chunk_size": 900,
-                "chunk_overlap": 180
-            },
-            "retrieval": {
-                "search_type": "similarity_score_threshold",
-                "k": 5,
-                "score_threshold": 0.6
-            },
-            "system_prompt": """Eres un especialista en jardinería urbana y cultivo en espacios reducidos.
+urban_gardening:
+  display_name: "Jardinería Urbana y Espacios Pequeños"
+  description: "Cultivo en espacios urbanos, balcones, terrazas y jardines pequeños"
+  enabled: true
+  priority: 2
+  vectorstore:
+    type: "chroma"
+    path: "./data/vectorstores/urban_gardening"
+    collection_name: "urban_gardening_collection"
+    chunk_size: 900
+    chunk_overlap: 180
+    embedding_model: "llama3.1" 
+    embedding_base_url: "http://localhost:11434" 
+  retrieval:
+    search_type: "similarity_score_threshold"
+    k: 5
+    score_threshold: 0.6
+  system_prompt: |-
+    Eres un especialista en jardinería urbana y cultivo en espacios reducidos.
 
-**Especialidades principales:**
-- Cultivo en macetas, contenedores y espacios pequeños
-- Jardinería vertical y sistemas hidropónicos caseros
-- Plantas adaptadas a ambientes urbanos
-- Optimización de luz, agua y nutrientes en espacios limitados
-- Jardines en balcones, terrazas y azoteas
+    **Especialidades principales:**
+    - Cultivo en macetas, contenedores y espacios pequeños
+    - Jardinería vertical y sistemas hidropónicos caseros
+    - Plantas adaptadas a ambientes urbanos
+    - Optimización de luz, agua y nutrientes en espacios limitados
+    - Jardines en balcones, terrazas y azoteas
 
-**Enfoque:**
-- Adapta todas las recomendaciones a espacios limitados
-- Considera restricciones urbanas (luz, viento, espacio)
-- Sugiere variedades compactas y de rápido crecimiento
-- Incluye soluciones creativas para maximizar el espacio
+    **Enfoque:**
+    - Adapta todas las recomendaciones a espacios limitados
+    - Considera restricciones urbanas (luz, viento, espacio)
+    - Sugiere variedades compactas y de rápido crecimiento
+    - Incluye soluciones creativas para maximizar el espacio
 
-{context}""",
-            "categories": ["jardinería_urbana", "espacios_pequeños", "cultivo_contenedores", "jardines_verticales"],
-            "keywords": {
-                "primary": ["urbano", "balcón", "terraza", "maceta", "contenedor", "pequeño"],
-                "secondary": ["vertical", "hidropónico", "compacto", "apartamento", "ciudad"]
-            },
-            "source_paths": ["./data/documents/urban_gardening"],
-            "custom_settings": {
-                "space_constraints": True,
-                "container_focus": True,
-                "recommended_plants": ["herbs", "microgreens", "cherry_tomatoes", "lettuce"],
-                "urban_challenges": ["limited_light", "wind_exposure", "pollution", "space_restrictions"]
-            }
-        }
+    {context}
+  categories:
+    - "jardinería_urbana"
+    - "espacios_pequeños"
+    - "cultivo_contenedores"
+    - "jardines_verticales"
+  keywords:
+    primary:
+      - "urbano"
+      - "balcón"
+      - "terraza"
+      - "maceta"
+      - "contenedor"
+      - "pequeño"
+    secondary:
+      - "vertical"
+      - "hidropónico"
+      - "compacto"
+      - "apartamento"
+      - "ciudad"
+  source_paths:
+    - "./data/documents/urban_gardening"
+  custom_settings:
+    space_constraints: true
+    container_focus: true
+    recommended_plants:
+      - "herbs"
+      - "microgreens"
+      - "cherry_tomatoes"
+      - "lettuce"
+    urban_challenges:
+      - "limited_light"
+      - "wind_exposure"
+      - "pollution"
+      - "space_restrictions"
         

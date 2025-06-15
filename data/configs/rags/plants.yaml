@@ -1,52 +1,72 @@
-"plants": {
-    "display_name": "Plantas y Botánica General",
-    "description": "Información general sobre plantas, cultivo, cuidados y botánica",
-    "enabled": True,
-    "priority": 1,
-    "vectorstore": {
-        "type": "chroma",
-        "path": "./data/vectorstores/plants",
-        "collection_name": "plants_collection",
-        "chunk_size": 1000,
-        "chunk_overlap": 200,
-        "embedding_model": "llama3.1",
-        "embedding_base_url": "http://localhost:11434"
-    },
-    "retrieval": {
-        "search_type": "mmr",
-        "k": 5,
-        "fetch_k": 20,
-        "lambda_mult": 0.7,
-        "score_threshold": 0.5
-    },
-    "system_prompt": """Eres un especialista en botánica y plantas. Tu conocimiento incluye:
+plants:
+  display_name: "Plantas y Botánica General"
+  description: "Información general sobre plantas, cultivo, cuidados y botánica"
+  enabled: true
+  priority: 1
+  vectorstore:
+    type: "chroma"
+    path: "./data/vectorstores/plants"
+    collection_name: "plants_collection"
+    chunk_size: 1000
+    chunk_overlap: 200
+    embedding_model: "llama3.1"
+    embedding_base_url: "http://localhost:11434"
+  retrieval:
+    search_type: "mmr"
+    k: 5
+    fetch_k: 20
+    lambda_mult: 0.7
+    score_threshold: 0.5
+  system_prompt: |-
+    Eres un especialista en botánica y plantas. Tu conocimiento incluye:
 
-**Especialidades principales:**
-- Información botánica general de plantas
-- Cuidados y técnicas de cultivo
-- Características de especies específicas (especialmente Malus domestica, Prunus cerasus, Vitis vinifera, Citrus aurantium, Prunus persica, Fragaria vesca, Solanum lycopersicum, Psidium guajava, Syzygium cumini, Citrus limon, Mangifera indica, Punica granatum, Prunus armeniaca, Vaccinium macrocarpon, Pyrus communis)
-- Técnicas de jardinería y horticultura
+    **Especialidades principales:**
+    - Información botánica general de plantas
+    - Cuidados y técnicas de cultivo
+    - Características de especies específicas (especialmente Malus domestica, Prunus cerasus, Vitis vinifera, Citrus aurantium, Prunus persica, Fragaria vesca, Solanum lycopersicum, Psidium guajava, Syzygium cumini, Citrus limon, Mangifera indica, Punica granatum, Prunus armeniaca, Vaccinium macrocarpon, Pyrus communis)
+    - Técnicas de jardinería y horticultura
 
-**Instrucciones de respuesta:**
-- Proporciona información práctica y científicamente fundamentada
-- Incluye consejos de cuidado cuando sea relevante
-- Menciona condiciones ambientales necesarias
-- Responde en español de España, de forma clara y educativa
+    **Instrucciones de respuesta:**
+    - Proporciona información práctica y científicamente fundamentada
+    - Incluye consejos de cuidado cuando sea relevante
+    - Menciona condiciones ambientales necesarias
+    - Responde en español de España, de forma clara y educativa
 
-{context}""",
-    "categories": ["botánica_general", "cultivo_plantas", "cuidados_plantas", "especies_específicas"],
-    "keywords": {
-        "primary": ["planta", "cultivo", "botánica", "jardín", "especie"],
-        "secondary": ["cuidado", "riego", "fertilización", "poda", "reproducción"]
-    },
-    "source_paths": ["./data/documents/plants"],
-    "custom_settings": {
-        "specific_species": [
-            "Malus domestica", "Prunus cerasus", "Vitis vinifera", 
-            "Citrus aurantium", "Prunus persica", "Fragaria vesca", 
-            "Solanum lycopersicum", "Psidium guajava", "Syzygium cumini",
-            "Citrus limon", "Mangifera indica", "Punica granatum",
-            "Prunus armeniaca", "Vaccinium macrocarpon", "Pyrus communis"
-        ]
-    }
-}
+    {context}
+  categories:
+    - "botánica_general"
+    - "cultivo_plantas"
+    - "cuidados_plantas"
+    - "especies_específicas"
+  keywords:
+    primary:
+      - "planta"
+      - "cultivo"
+      - "botánica"
+      - "jardín"
+      - "especie"
+    secondary:
+      - "cuidado"
+      - "riego"
+      - "fertilización"
+      - "poda"
+      - "reproducción"
+  source_paths:
+    - "./data/documents/plants"
+  custom_settings:
+    specific_species:
+      - "Malus domestica"
+      - "Prunus cerasus"
+      - "Vitis vinifera"
+      - "Citrus aurantium"
+      - "Prunus persica"
+      - "Fragaria vesca"
+      - "Solanum lycopersicum"
+      - "Psidium guajava"
+      - "Syzygium cumini"
+      - "Citrus limon"
+      - "Mangifera indica"
+      - "Punica granatum"
+      - "Prunus armeniaca"
+      - "Vaccinium macrocarpon"
+      - "Pyrus communis"

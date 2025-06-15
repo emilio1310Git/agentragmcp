@@ -1,0 +1,19 @@
+{
+  "migration_date": "2024-12-19",
+  "migrated_from": "hardcoded_config",
+  "migrated_to": "dynamic_config",
+  "backed_up_files": [
+    "agentragmcp/core/config.py",
+    "agentragmcp/api/app/agents/base_agent.py",
+    "agentragmcp/api/app/agents/plants_agent.py",
+    "agentragmcp/api/app/agents/pathology_agent.py",
+    "agentragmcp/api/app/agents/general_agent.py",
+    "agentragmcp/api/app/services/rag_service.py",
+    "agentragmcp/api/app/services/agent_service.py"
+  ],
+  "new_structure": {
+    "configs": "data/configs/",
+    "custom_agents": "agentragmcp/custom_agents/",
+    "documentation": "MIGRATION_README.md"
+  }
+}

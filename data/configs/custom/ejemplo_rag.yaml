@@ -1,0 +1,36 @@
+# Ejemplo de configuración personalizada
+
+display_name: "Mi RAG Personalizado"
+description: "Ejemplo de cómo crear un RAG personalizado"
+enabled: true
+priority: 10
+
+vectorstore:
+  type: "chroma"
+  path: "./data/vectorstores/mi_rag_personalizado"
+  collection_name: "mi_collection"
+  chunk_size: 1000
+  chunk_overlap: 200
+
+retrieval:
+  search_type: "mmr"
+  k: 5
+  lambda_mult: 0.7
+
+system_prompt: |
+  Eres un especialista en [tu área específica].
+  
+  Proporciona información precisa y útil sobre [tu dominio].
+  
+  {context}
+
+categories: ["categoria1", "categoria2"]
+keywords:
+  primary: ["palabra_clave1", "palabra_clave2"]
+  secondary: ["término1", "término2"]
+
+source_paths: ["./data/documents/mi_rag_personalizado"]
+
+custom_settings:
+  mi_configuracion: "valor"
+  otra_opcion: true

@@ -196,7 +196,16 @@ def create_application() -> FastAPI:
             return FileResponse(favicon_path)
         else:
             raise HTTPException(status_code=404, detail="Favicon not found")
-    
+
+    @app.on_event("startup")
+    async def startup_event():
+        """Inicialización de la aplicación"""
+        from agentragmcp.core.dynamic_config import config_manager
+        
+        # Cargar configuraciones dinámicas
+        config_manager.load_all_configs()
+        logger.info("Sistema dinámico inicializado")    
+
     # Incluir routers
     app.include_router(health.router)
     app.include_router(chat.router)

@@ -1,72 +1,62 @@
-plants:
-  display_name: "Plantas y Botánica General"
-  description: "Información general sobre plantas, cultivo, cuidados y botánica"
-  enabled: true
-  priority: 1
-  vectorstore:
-    type: "chroma"
-    path: "./data/vectorstores/plants"
-    collection_name: "plants_collection"
-    chunk_size: 1000
-    chunk_overlap: 200
-    embedding_model: "llama3.1"
-    embedding_base_url: "http://localhost:11434"
-  retrieval:
-    search_type: "mmr"
-    k: 5
-    fetch_k: 20
-    lambda_mult: 0.7
-    score_threshold: 0.5
-  system_prompt: |-
-    Eres un especialista en botánica y plantas. Tu conocimiento incluye:
+categories:
+- cultivo
+- cuidados
+- especies
+- botánica
+custom_settings:
+  focus_practical: true
+  include_scientific_names: true
+description: Información general sobre plantas, cultivo, cuidados y botánica
+display_name: Plantas y Botánica General
+enabled: true
+keywords:
+  primary:
+  - planta
+  - plantas
+  - árbol
+  - cultivo
+  - jardín
+  - botánica
+  secondary:
+  - sembrar
+  - plantar
+  - cuidar
+  - especie
+  - variedad
+priority: 1
+retrieval:
+  fetch_k: 20
+  k: 5
+  lambda_mult: 0.7
+  score_threshold: 0.5
+  search_type: mmr
+source_paths:
+- ./data/documents/plants
+system_prompt: 'Eres un especialista en botánica y plantas.
 
-    **Especialidades principales:**
-    - Información botánica general de plantas
-    - Cuidados y técnicas de cultivo
-    - Características de especies específicas (especialmente Malus domestica, Prunus cerasus, Vitis vinifera, Citrus aurantium, Prunus persica, Fragaria vesca, Solanum lycopersicum, Psidium guajava, Syzygium cumini, Citrus limon, Mangifera indica, Punica granatum, Prunus armeniaca, Vaccinium macrocarpon, Pyrus communis)
-    - Técnicas de jardinería y horticultura
 
-    **Instrucciones de respuesta:**
-    - Proporciona información práctica y científicamente fundamentada
-    - Incluye consejos de cuidado cuando sea relevante
-    - Menciona condiciones ambientales necesarias
-    - Responde en español de España, de forma clara y educativa
+  **Especialidades principales:**
 
-    {context}
-  categories:
-    - "botánica_general"
-    - "cultivo_plantas"
-    - "cuidados_plantas"
-    - "especies_específicas"
-  keywords:
-    primary:
-      - "planta"
-      - "cultivo"
-      - "botánica"
-      - "jardín"
-      - "especie"
-    secondary:
-      - "cuidado"
-      - "riego"
-      - "fertilización"
-      - "poda"
-      - "reproducción"
-  source_paths:
-    - "./data/documents/plants"
-  custom_settings:
-    specific_species:
-      - "Malus domestica"
-      - "Prunus cerasus"
-      - "Vitis vinifera"
-      - "Citrus aurantium"
-      - "Prunus persica"
-      - "Fragaria vesca"
-      - "Solanum lycopersicum"
-      - "Psidium guajava"
-      - "Syzygium cumini"
-      - "Citrus limon"
-      - "Mangifera indica"
-      - "Punica granatum"
-      - "Prunus armeniaca"
-      - "Vaccinium macrocarpon"
-      - "Pyrus communis"
+  - Información general sobre especies de plantas
+
+  - Técnicas de cultivo y propagación
+
+  - Cuidados específicos por especie
+
+  - Identificación de plantas
+
+  - Condiciones de crecimiento óptimas
+
+
+  **IMPORTANTE:** Enfócate en información práctica y aplicable.
+
+
+  {context}'
+vectorstore:
+  chunk_overlap: 200
+  chunk_size: 1000
+  collection_name: plants_collection
+  embedding_base_url: http://localhost:11434
+  embedding_model: llama3.1
+  path: ./data/vectorstores/plants
+  type: chroma

@@ -15,14 +15,13 @@ class BaseAgent(ABC):
     y proporciona funcionalidades básicas compartidas.
     """
     
-    # def __init__(
-    #     self, 
-    #     name: str, 
-    #     description: str, 
-    #     topics: List[str],
-    #     rag_service: 'RAGService'
-    # ):
-    def __init__(self, agent_type: str, config: Optional[Dict] = None):
+    def __init__(
+        self, 
+        name: str, 
+        description: str, 
+        topics: List[str],
+        rag_service: 'RAGService'
+    ):
         """
         Inicializa el agente base.
         
@@ -32,12 +31,10 @@ class BaseAgent(ABC):
             topics: Lista de temáticas que maneja el agente
             rag_service: Servicio RAG para consultas
         """
-        self.agent_type = agent_type
-        self.config = config or {}
-        # self.name = name
-        # self.description = description
-        # self.topics = topics
-        # self.rag_service = rag_service
+        self.name = name
+        self.description = description
+        self.topics = topics
+        self.rag_service = rag_service
         self.settings = get_settings()
         
         # Métricas del agente

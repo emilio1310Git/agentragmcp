@@ -1,63 +1,49 @@
-pathology:
-  display_name: "Patologías y Enfermedades de Plantas"
-  description: "Diagnóstico, tratamiento y prevención de enfermedades y plagas en plantas"
-  enabled: true
-  priority: 1
-  vectorstore:
-    type: "chroma"
-    path: "./data/vectorstores/pathology"
-    collection_name: "pathology_collection"
-    chunk_size: 800
-    chunk_overlap: 150
-    embedding_model: "llama3.1"
-    embedding_base_url: "http://localhost:11434" # Added this line as it's typically present with embedding_model
-  retrieval:
-    search_type: "similarity_score_threshold"
-    k: 7
-    score_threshold: 0.4
-  system_prompt: |-
-    Eres un especialista en fitopatología y sanidad vegetal. Tu experiencia incluye:
-
-    **Especialidades principales:**
-    - Diagnóstico de enfermedades de plantas
-    - Identificación de plagas y patógenos
-    - Tratamientos fitosanitarios
-    - Estrategias de prevención y control integrado
-    - Patologías específicas en Malus domestica, Vitis vinifera, Citrus aurantium, Solanum lycopersicum
-
-    **Instrucciones de respuesta:**
-    - Proporciona diagnósticos basados en síntomas descritos
-    - Recomienda tratamientos apropiados y seguros
-    - Incluye medidas preventivas
-    - Advierte sobre el uso seguro de productos fitosanitarios
-
-    **IMPORTANTE:** Siempre incluye advertencias de seguridad para productos químicos.
-
-    {context}
-  categories:
-    - "diagnóstico_enfermedades"
-    - "identificación_plagas"
-    - "tratamientos_fitosanitarios"
-    - "prevención_patologías"
-  keywords:
-    primary:
-      - "enfermedad"
-      - "plaga"
-      - "síntomas"
-      - "tratamiento"
-      - "control"
-    secondary:
-      - "hongo"
-      - "bacteria"
-      - "virus"
-      - "insecto"
-      - "prevención"
-  source_paths:
-    - "./data/documents/pathology"
-  custom_settings:
-    target_species:
-      - "Malus domestica"
-      - "Vitis vinifera"
-      - "Citrus aurantium"
-      - "Solanum lycopersicum"
-    safety_warnings: true
+categories:
+- diagnóstico_enfermedades
+- tratamientos
+- prevención
+- plagas
+custom_settings:
+  include_prevention: true
+  safety_warnings: true
+  treatment_focus: integrated_pest_management
+description: Especialista en diagnóstico y tratamiento de enfermedades, plagas y patologías
+  vegetales
+display_name: Patologías y Enfermedades de Plantas
+enabled: true
+keywords:
+  primary:
+  - enfermedad
+  - plaga
+  - síntomas
+  - tratamiento
+  - hongo
+  - bacteria
+  secondary:
+  - patología
+  - virus
+  - prevención
+  - control
+  - insecticida
+priority: 2
+retrieval:
+  fetch_k: 20
+  k: 5
+  lambda_mult: 0.7
+  score_threshold: 0.5
+  search_type: mmr
+source_paths:
+- ./data/documents/pathology
+system_prompt: "Eres un especialista en patologías vegetales y fitopatología.\n\n\
+  **Especialidades principales:**\n- Diagnóstico de enfermedades de plantas\n- Identificación\
+  \ de plagas y patógenos  \n- Tratamientos fitosanitarios\n- Estrategias de prevención\n\
+  - Manejo integrado de plagas\n\n**IMPORTANTE:** Siempre incluye advertencias de\
+  \ seguridad para productos químicos.\n\n{context}"
+vectorstore:
+  chunk_overlap: 200
+  chunk_size: 1000
+  collection_name: pathology_collection
+  embedding_base_url: http://localhost:11434
+  embedding_model: llama3.1
+  path: ./data/vectorstores/pathology
+  type: chroma

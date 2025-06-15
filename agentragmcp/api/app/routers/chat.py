@@ -13,8 +13,6 @@ from agentragmcp.api.app.models.chat_models import (
     AgentSelectionRequest,
     AgentSelectionResponse
 )
-from agentragmcp.api.app.services.rag_service import RAGService
-from agentragmcp.api.app.services.agent_service import AgentService
 from agentragmcp.api.app.services.mcp_service import MCPService
 from agentragmcp.core.exceptions import (
     EmptyQuestionError,
@@ -24,11 +22,11 @@ from agentragmcp.core.exceptions import (
     ValidationError,
     AgentRagMCPHTTPException
 )
+from agentragmcp.api.app.services.dynamic_agent_system import DynamicAgentSystem
 
 # Inicialización de servicios globales
 settings = get_settings()
-rag_service = RAGService()
-agent_service = AgentService(rag_service)
+dynamic_system = DynamicAgentSystem()
 mcp_service = MCPService()
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
@@ -263,7 +261,8 @@ async def get_topics():
 )
 async def get_agents():
     """Obtiene información de los agentes disponibles"""
-    return agent_service.get_available_agents()
+    agents = dynamic_system.get_available_agents()
+    return agents
 
 @router.delete(
     "/session/{session_id}",

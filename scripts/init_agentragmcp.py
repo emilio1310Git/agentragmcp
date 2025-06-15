@@ -230,6 +230,14 @@ def run_health_checks() -> bool:
     
     return all_checks_passed
 
+def check_dynamic_system():
+    """Verifica que el sistema dinámico esté configurado"""
+    config_path = Path("data/configs")
+    if not config_path.exists():
+        print("⚠️  Sistema dinámico no configurado. Ejecutar migración.")
+        return False
+    return True
+
 def create_sample_data_info(base_path: Path) -> bool:
     """
     Crea información sobre cómo agregar datos de ejemplo.

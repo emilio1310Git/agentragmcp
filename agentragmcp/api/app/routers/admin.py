@@ -84,7 +84,8 @@ async def list_rag_topics(token: str = Depends(verify_admin_token)):
         settings = get_settings()
         topics_info = {}
         
-        for topic in settings.RAG_TOPICS:
+        available_topics = dynamic_system.get_available_topics()
+        for topic in available_topics:
             vectorstore_path = settings.get_vectorstore_path(topic)
             is_available = topic in rag_service.get_available_topics()
             

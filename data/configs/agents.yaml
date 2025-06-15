@@ -1,186 +1,196 @@
 agents:
-  plants:
-    description: "Especialista en información general de plantas, cultivo y botánica"
-    class: "PlantsAgent"
-    topics:
-      - "plants"
-    enabled: true
-    priority: 1
+  eco_agriculture:
+    class: EcoAgricultureAgent
     config:
+      focus_areas:
+      - soil_health
+      - biodiversity
+      - sustainability
       max_confidence: 1.0
       min_confidence: 0.1
-      fallback_enabled: false
-      primary_keywords:
-        - "planta"
-        - "plantas"
-        - "árbol"
-        - "árboles"
-        - "cultivo"
-        - "cultivar"
-        - "sembrar"
-        - "plantar"
-        - "jardín"
-        - "huerto"
-        - "botánica"
-        - "especie"
-        - "fruto"
-        - "hoja"
-        - "flor"
-        - "raíz"
-        - "crecimiento"
-        - "cuidado"
       patterns:
-        - "cómo.*cultivar"
-        - "cuándo.*plantar"
-        - "qué.*planta"
-        - "características.*de"
-        - "cuidados.*de"
-        - "información.*sobre"
-      target_species:
-        - "Malus domestica"
-        - "Prunus cerasus"
-        - "Vitis vinifera"
-        - "Citrus aurantium"
-        - "Prunus persica"
-        - "Fragaria vesca"
-        - "Solanum lycopersicum"
-      common_names:
-        - "manzano"
-        - "manzana"
-        - "cerezo"
-        - "cereza"
-        - "vid"
-        - "uva"
-        - "naranjo"
-        - "naranja"
-        - "tomate"
-        - "tomatera"
-  pathology: # Ten en cuenta que "pathology" aparece dos veces como clave principal, lo cual sobrescribirá la primera.
-    description: "Especialista en patologías, enfermedades, plagas y tratamientos de plantas"
-    class: "PathologyAgent"
-    topics:
-      - "pathology"
+      - agricultura.*ecológica
+      - cultivo.*orgánico
+      - .*sostenible
+      primary_keywords:
+      - ecológico
+      - orgánico
+      - sostenible
+      - biodiversidad
+      - permacultura
+      - compost
+      - rotación
+    description: Especialista en agricultura ecológica y sostenible
     enabled: true
-    priority: 2
-    config:
-      max_confidence: 1.0
-      min_confidence: 0.1
-      fallback_enabled: false
-      primary_keywords:
-        - "enfermedad"
-        - "enfermedades"
-        - "patología"
-        - "patologías"
-        - "plaga"
-        - "plagas"
-        - "hongo"
-        - "hongos"
-        - "bacteria"
-        - "bacterias"
-        - "virus"
-        - "tratamiento"
-        - "síntomas"
-        - "control"
-        - "mancha"
-        - "manchas"
-      patterns:
-        - "qué.*enfermedad"
-        - "cómo.*tratar"
-        - "síntomas.*de"
-        - "problema.*con"
-        - "se.*está.*muriendo"
-        - "hojas.*amarillas"
-      target_species:
-        - "Malus domestica"
-        - "Vitis vinifera"
-        - "Citrus aurantium"
-        - "Solanum lycopersicum"
+    name: eco_agriculture
+    priority: 4
     thresholds:
-      keyword_weight: 0.5
-      symptom_weight: 0.3
-      species_weight: 0.3
+      keyword_weight: 0.6
       pattern_weight: 0.4
-  general:
-    description: "Asistente general para consultas diversas sobre plantas y botánica"
-    class: "GeneralAgent"
     topics:
-      - "general"
-    enabled: true
-    priority: 3
+    - eco_agriculture
+  general:
+    class: GeneralAgent
     config:
+      educational_focus: true
+      fallback_enabled: true
       max_confidence: 0.8
       min_confidence: 0.1
-      fallback_enabled: true
-      primary_keywords:
-        - "qué es"
-        - "qué son"
-        - "cómo funciona"
-        - "por qué"
-        - "explicar"
-        - "definir"
-        - "botánica"
-        - "información"
       patterns:
-        - "qué.*es.*la?"
-        - "cómo.*funciona"
-        - "por.*qué.*las?.*plantas"
-        - "diferencia.*entre"
-        - "tipos.*de.*plantas"
+      - qué.*es.*la?
+      - cómo.*funciona
+      - por.*qué.*las?.*plantas
+      - diferencia.*entre
+      - tipos.*de
+      - explicar.*qué
+      primary_keywords:
+      - qué es
+      - qué son
+      - cómo funciona
+      - por qué
+      - explicar
+      - definir
+      - botánica
+      - información
+    description: Asistente general para consultas diversas sobre plantas y botánica
+    enabled: true
+    name: general
+    priority: 3
     thresholds:
-      base_confidence: 0.2
       educational_bonus: 0.3
-      general_bonus: 0.2
-  eco_agriculture:
-    description: "Especialista en agricultura ecológica y sostenible"
-    class: "EcoAgricultureAgent"
-    module_path: "./agentragmcp/custom_agents/eco_agriculture_agent.py"
-    topics:
-      - "eco_agriculture"
-    enabled: true
-    priority: 2
-    config:
-      max_confidence: 0.9
-      min_confidence: 0.1
-      fallback_enabled: false
-      primary_keywords:
-        - "ecológico"
-        - "orgánico"
-        - "sostenible"
-        - "natural"
-        - "biodiversidad"
-        - "permacultura"
-        - "compost"
-        - "biológico"
-        - "certificado"
-      patterns:
-        - "agricultura.*ecológica"
-        - "método.*natural"
-        - "sin.*químicos"
-        - "cultivo.*orgánico"
-        - "permacultura"
-    thresholds:
       keyword_weight: 0.4
-      sustainability_weight: 0.4
+      pattern_weight: 0.3
+    topics:
+    - general
+  pathology:
+    class: PathologyAgent
+    config:
+      fallback_enabled: false
+      max_confidence: 1.0
+      min_confidence: 0.1
+      patterns:
+      - qué.*enfermedad
+      - cómo.*tratar
+      - síntomas.*de
+      - problema.*con
+      - se.*está.*muriendo
+      - hojas.*amarillas
+      primary_keywords:
+      - enfermedad
+      - enfermedades
+      - patología
+      - patologías
+      - plaga
+      - plagas
+      - hongo
+      - hongos
+      - bacteria
+      - bacterias
+      - virus
+      - tratamiento
+      - síntomas
+      - control
+      symptom_keywords:
+      - mancha
+      - manchas
+      - amarilleo
+      - marchitez
+      - podredumbre
+      - necrosis
+      - lesión
+      - deformación
+      target_species:
+      - Malus domestica
+      - Vitis vinifera
+      - Citrus aurantium
+      - Solanum lycopersicum
+    description: Especialista en patologías, enfermedades, plagas y tratamientos de
+      plantas
+    enabled: true
+    name: pathology
+    priority: 2
+    thresholds:
+      keyword_weight: 0.5
+      pattern_weight: 0.4
+      species_weight: 0.3
+      symptom_weight: 0.3
+    topics:
+    - pathology
+  plants:
+    class: PlantsAgent
+    config:
+      fallback_enabled: false
+      max_confidence: 1.0
+      min_confidence: 0.1
+      patterns:
+      - cómo.*cultivar
+      - cuándo.*plantar
+      - qué.*planta
+      - características.*de
+      - cuidados.*de
+      - información.*sobre
+      primary_keywords:
+      - planta
+      - plantas
+      - árbol
+      - árboles
+      - cultivo
+      - cultivar
+      - sembrar
+      - plantar
+      - jardín
+      - huerto
+      - botánica
+      target_species:
+      - malus domestica
+      - prunus cerasus
+      - vitis vinifera
+      - citrus aurantium
+      - prunus persica
+      - fragaria vesca
+      - solanum lycopersicum
+    description: Especialista en información general de plantas, cultivo y botánica
+    enabled: true
+    name: plants
+    priority: 1
+    thresholds:
+      context_bonus: 0.2
+      keyword_weight: 0.3
       pattern_weight: 0.2
-
-selector:
-  selection_method: "hybrid"
-  rule_based:
+      species_weight: 0.5
+    topics:
+    - plants
+  urban_gardening:
+    class: UrbanGardeningAgent
+    config:
+      max_confidence: 1.0
+      min_confidence: 0.1
+      patterns:
+      - en.*balcón
+      - en.*terraza
+      - espacio.*pequeño
+      - .*interior
+      primary_keywords:
+      - balcón
+      - terraza
+      - interior
+      - urbano
+      - maceta
+      - apartamento
+      - espacio
+      - pequeño
+      space_types:
+      - balcony
+      - terrace
+      - indoor
+      - small_space
+    description: Especialista en jardinería urbana y cultivos en espacios reducidos
     enabled: true
-    confidence_threshold: 0.3
-  llm_based:
-    enabled: true
-    min_agents_for_llm: 3
-    temperature: 0.1
-  hybrid:
-    primary_method: "rule_based"
-    fallback_method: "llm_based"
-    llm_threshold: 0.5
-
-metrics:
-  track_agent_performance: true
-  track_selection_accuracy: true
-  log_confidence_scores: true
-  alerts:
-    low_success_rate: 0.5
-    high_error_rate: 0.2
+    name: urban_gardening
+    priority: 5
+    thresholds:
+      keyword_weight: 0.5
+      pattern_weight: 0.3
+      space_bonus: 0.2
+    topics:
+    - urban_gardening

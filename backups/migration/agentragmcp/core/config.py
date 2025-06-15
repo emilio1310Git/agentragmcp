@@ -44,16 +44,6 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL: str = Field(default="llama3.1", json_schema_extra={"env": "EMBEDDING_MODEL"})
     LLM_TEMPERATURE: float = Field(default=0.7, json_schema_extra={"env": "LLM_TEMPERATURE"})
     
-    # Configuración dinámica
-    DYNAMIC_CONFIG_ENABLED: bool = Field(
-        default=True, 
-        json_schema_extra={"env": "DYNAMIC_CONFIG_ENABLED"}
-    )
-    CONFIG_BASE_PATH: str = Field(
-        default="./data/configs",
-        json_schema_extra={"env": "CONFIG_BASE_PATH"}
-    )    
-    
     # Configuración RAG - usar string por defecto y convertir
     VECTORSTORE_TYPE: str = Field(default="chroma", json_schema_extra={"env": "VECTORSTORE_TYPE"})
     VECTORSTORE_BASE_PATH: str = Field(
@@ -62,6 +52,26 @@ class Settings(BaseSettings):
     )
     RETRIEVAL_K: int = Field(default=5, json_schema_extra={"env": "RETRIEVAL_K"})
     RETRIEVAL_TYPE: str = Field(default="mmr", json_schema_extra={"env": "RETRIEVAL_TYPE"})
+    
+    # Configuración de temáticas RAG (como string para evitar parsing JSON)
+    RAG_TOPICS: Union[str, List[str]] = Field(
+        default="plants,pathology,general",
+        json_schema_extra={"env": "RAG_TOPICS"}
+    )
+    
+    # Configuración específica por temática
+    PLANTS_VECTORSTORE_PATH: str = Field(
+        default="./data/vectorstores/plants", 
+        json_schema_extra={"env": "PLANTS_VECTORSTORE_PATH"}
+    )
+    PATHOLOGY_VECTORSTORE_PATH: str = Field(
+        default="./data/vectorstores/pathology", 
+        json_schema_extra={"env": "PATHOLOGY_VECTORSTORE_PATH"}
+    )
+    GENERAL_VECTORSTORE_PATH: str = Field(
+        default="./data/vectorstores/general", 
+        json_schema_extra={"env": "GENERAL_VECTORSTORE_PATH"}
+    )
     
     # Configuración de agentes
     AGENT_SELECTION_MODEL: str = Field(
@@ -84,6 +94,17 @@ class Settings(BaseSettings):
     # Configuración de monitoreo
     METRICS_ENABLED: bool = Field(default=True, json_schema_extra={"env": "METRICS_ENABLED"})
     
+    # Configuraciones específicas de especies y patologías
+    SPECIFIC_SPECIES: Union[str, List[str]] = Field(
+        default="Malus domestica,Prunus cerasus,Vitis vinifera,Citrus aurantium,Prunus persica,Fragaria vesca,Solanum lycopersicum,Psidium guajava,Syzygium cumini,Citrus limon,Mangifera indica,Punica granatum,Prunus armeniaca,Vaccinium macrocarpon,Pyrus communis",
+        json_schema_extra={"env": "SPECIFIC_SPECIES"}
+    )
+    
+    PATHOLOGY_SPECIES: Union[str, List[str]] = Field(
+        default="Malus domestica,Vitis vinifera,Citrus aurantium,Solanum lycopersicum",
+        json_schema_extra={"env": "PATHOLOGY_SPECIES"}
+    )
+
     @field_validator("RAG_TOPICS", mode="before")
     @classmethod
     def parse_rag_topics(cls, v):
@@ -155,17 +176,20 @@ class Settings(BaseSettings):
     def get_vectorstore_path(self, topic: str) -> str:
         """Obtiene el path del vectorstore para una temática específica"""
         # Intentar usar path específico configurado
-        from agentragmcp.core.dynamic_config import config_manager
-        config = config_manager.get_rag_config(topic)
-        if config:
-            return config.vectorstore.path
+        specific_path_attr = f"{topic.upper()}_VECTORSTORE_PATH"
+        if hasattr(self, specific_path_attr):
+            return getattr(self, specific_path_attr)
+        
+        # Fallback al path base
         return os.path.join(self.VECTORSTORE_BASE_PATH, topic)
 
     @property
     def available_topics(self) -> List[str]:
         """Devuelve las temáticas RAG disponibles"""
-        from agentragmcp.core.dynamic_config import config_manager
-        return list(config_manager.get_available_topics())
+        topics = self.RAG_TOPICS
+        if isinstance(topics, str):
+            return self.parse_rag_topics(topics)
+        return topics
 
     @property
     def is_production(self) -> bool:

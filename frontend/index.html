@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizador Contaminación Aire</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Monitor de Calidad del Aire</h1>
+            <p>Visualización de datos de contaminación atmosférica</p>
+        </header>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label for="pollutant">Contaminante:</label>
+                <select id="pollutant">
+                    <option value="pm25">PM2.5 (µg/m³)</option>
+                    <option value="pm10">PM10 (µg/m³)</option>
+                    <option value="no2">NO2 (µg/m³)</option>
+                    <option value="o3">O3 (µg/m³)</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="date">Fecha:</label>
+                <input type="date" id="date" value="2024-01-15">
+            </div>
+            
+            <div class="control-group">
+                <label for="hour">Hora:</label>
+                <input type="number" id="hour" min="0" max="23" value="12" placeholder="0-23">
+            </div>
+            
+            <button id="updateMap" class="btn-primary">Actualizar Datos</button>
+            <button id="loadSampleData" class="btn-secondary">Cargar Datos de Prueba</button>
+        </div>
+        
+        <div class="status" id="status">
+            <p>Listo para cargar datos...</p>
+        </div>
+        
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+        
+        <div class="stats-container">
+            <h2>Estadísticas del Contaminante Seleccionado</h2>
+            <div id="stats" class="stats-grid">
+                <div class="stat-card">
+                    <h3>Promedio</h3>
+                    <span id="avg-value">-</span>
+                </div>
+                <div class="stat-card">
+                    <h3>Máximo</h3>
+                    <span id="max-value">-</span>
+                </div>
+                <div class="stat-card">
+                    <h3>Mínimo</h3>
+                    <span id="min-value">-</span>
+                </div>
+                <div class="stat-card">
+                    <h3>Estaciones</h3>
+                    <span id="station-count">-</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="data-table-container">
+            <h2>Datos de Estaciones</h2>
+            <div id="dataTable">
+                <table id="stationTable">
+                    <thead>
+                        <tr>
+                            <th>Estación</th>
+                            <th>Latitud</th>
+                            <th>Longitud</th>
+                            <th>Valor</th>
+                            <th>Calidad</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- Data will be populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="js/script.js"></script>
+</body>
+</html>

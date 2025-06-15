@@ -1,47 +1,43 @@
 """
-RAGService actualizado con configuración dinámica
-Carga RAGs basándose en archivos de configuración personalizados
+Sistema de agentes dinámico completo para AgentRagMCP
+Gestiona RAGs y agentes de forma dinámica basándose en configuración
 """
-import os
+
 import time
+import os
 from typing import List, Dict, Any, Optional, Tuple
-from pathlib import Path
+from datetime import datetime
 
 from langchain_chroma import Chroma
-from langchain_ollama import OllamaEmbeddings, ChatOllama
-from langchain.chains import create_retrieval_chain
-from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain.chains import create_history_aware_retriever
+from langchain_ollama import ChatOllama, OllamaEmbeddings
+from langchain.memory import ConversationBufferWindowMemory
+from langchain.schema import BaseMessage
 from langchain_core.chat_history import BaseChatMessageHistory
-from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_community.chat_message_histories import ChatMessageHistory
+from langchain.chains import ConversationalRetrievalChain
+from langchain_core.prompts import ChatPromptTemplate
+from pathlib import Path
 
-# Importar nuestro gestor de configuración
-from agentragmcp.core.dynamic_config import config_manager, RAGTopicConfig
-from agentragmcp.api.app.agents.dinamic_agent import DynamicAgent
+from agentragmcp.core.dynamic_config import config_manager, RAGTopicConfig, AgentConfig
 from agentragmcp.core.config import get_settings
-from agentragmcp.core.monitoring import logger, chat_metrics, get_logger_with_context
+from agentragmcp.core.monitoring import logger, get_logger_with_context
 from agentragmcp.core.exceptions import (
-    VectorStoreError, VectorStoreNotFoundError, LLMError,
-    RetrievalError, handle_langchain_error
+    AgentError, AgentNotFoundError, AgentSelectionError,
+    handle_langchain_error
+)
+from agentragmcp.api.app.agents.dinamic_agent import (
+    ConfigurableAgent, DynamicAgentLoader, DynamicAgent
 )
 
 class DynamicRAGService:
-    """Servicio RAG con configuración dinámica y carga automática"""
+    """Servicio de RAG dinámico que carga configuraciones automáticamente"""
     
-    def __init__(self, config_path: Optional[str] = None):
+    def __init__(self):
         self.settings = get_settings()
         
-        # Configurar el gestor de configuración
-        if config_path:
-            global config_manager
-            from agentragmcp.core.dynamic_config import ConfigManager
-            config_manager = ConfigManager(config_path)
-        
         # Componentes principales
-        self.embeddings_cache: Dict[str, OllamaEmbeddings] = {}
         self.llm = None
+        self.embeddings_cache: Dict[str, OllamaEmbeddings] = {}
         self.retrievers: Dict[str, Any] = {}
         self.chains: Dict[str, Any] = {}
         self.chat_histories: Dict[str, BaseChatMessageHistory] = {}
@@ -91,14 +87,14 @@ class DynamicRAGService:
         logger.info("Descubriendo configuraciones RAG...")
         
         # Crear configuraciones de ejemplo si no existen
-        if not config_manager.discover_rag_configs():
+        discovered = config_manager.discover_rag_configs()
+        if not discovered:
             logger.info("No se encontraron configuraciones, creando ejemplos...")
             config_manager.create_sample_configs()
+            discovered = config_manager.discover_rag_configs()
         
         # Cargar todas las configuraciones disponibles
-        topic_names = config_manager.discover_rag_configs()
-        
-        for topic_name in topic_names:
+        for topic_name in discovered:
             try:
                 self._load_rag_topic(topic_name)
             except Exception as e:
@@ -176,377 +172,357 @@ class DynamicRAGService:
             try:
                 test_results = vectorstore.similarity_search("test", k=1)
                 if not test_results:
-                    logger.warning(f"Vectorstore {config.name} no contiene documentos")
+                    logger.warning(f"Vectorstore {config.name} parece estar vacío")
                     return None
             except Exception as e:
-                logger.warning(f"Error probando vectorstore {config.name}: {e}")
+                logger.warning(f"Error verificando contenido de vectorstore {config.name}: {e}")
                 return None
             
             # Crear retriever con configuración específica
-            search_kwargs = {
-                "k": config.retrieval.k
-            }
-            
-            # Configuración específica según tipo de búsqueda
             if config.retrieval.search_type == "mmr":
-                search_kwargs.update({
-                    "fetch_k": config.retrieval.fetch_k,
-                    "lambda_mult": config.retrieval.lambda_mult
-                })
-            elif config.retrieval.search_type == "similarity_score_threshold":
-                search_kwargs["score_threshold"] = config.retrieval.score_threshold
-            
-            retriever = vectorstore.as_retriever(
-                search_type=config.retrieval.search_type,
-                search_kwargs=search_kwargs
-            )
+                retriever = vectorstore.as_retriever(
+                    search_type="mmr",
+                    search_kwargs={
+                        "k": config.retrieval.k,
+                        "fetch_k": config.retrieval.fetch_k,
+                        "lambda_mult": config.retrieval.lambda_mult
+                    }
+                )
+            else:
+                retriever = vectorstore.as_retriever(
+                    search_type="similarity",
+                    search_kwargs={
+                        "k": config.retrieval.k,
+                        "score_threshold": config.retrieval.score_threshold
+                    }
+                )
             
             return retriever
             
         except Exception as e:
             logger.error(f"Error cargando retriever para {config.name}: {e}")
-            raise VectorStoreError(f"Error cargando vectorstore para {config.name}: {str(e)}")
+            return None
     
     def _create_rag_chain(self, config: RAGTopicConfig, retriever):
-        """Crea cadena RAG con configuración personalizada"""
-        
-        # Prompt para contextualización (estándar)
-        contextualize_q_system_prompt = (
-            "Dado un historial de chat y la última pregunta del usuario "
-            "que podría hacer referencia al contexto en el historial de chat, "
-            "formular una pregunta independiente que pueda entenderse "
-            "sin el historial de chat. NO respondas la pregunta, "
-            "simplemente reformúlala si es necesario y, en caso contrario, devuélvela tal como está."
-        )
-        
-        contextualize_q_prompt = ChatPromptTemplate.from_messages([
-            ("system", contextualize_q_system_prompt),
-            MessagesPlaceholder("chat_history"),
-            ("human", "{input}"),
-        ])
-        
-        # Crear retriever consciente del historial
-        history_aware_retriever = create_history_aware_retriever(
-            self.llm, 
-            retriever, 
-            contextualize_q_prompt
-        )
-        
-        # Usar prompt personalizado si está configurado
-        system_prompt = config.system_prompt if config.system_prompt else self._get_default_prompt(config.name)
-        
-        # Reemplazar template de contexto si está personalizado
-        if config.context_template and "{context}" not in system_prompt:
-            system_prompt += f"\n\n{config.context_template}"
-        
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", system_prompt),
-            MessagesPlaceholder("chat_history"),
-            ("human", "{input}"),
-        ])
-        
-        # Crear cadenas
-        question_answer_chain = create_stuff_documents_chain(self.llm, prompt)
-        rag_chain = create_retrieval_chain(history_aware_retriever, question_answer_chain)
-        
-        # Crear cadena con historial
-        conversational_rag_chain = RunnableWithMessageHistory(
-            rag_chain,
-            self._get_session_history,
-            input_messages_key="input",
-            history_messages_key="chat_history",
-            output_messages_key="answer",
-        )
-        
-        return conversational_rag_chain
-    
-    def _get_default_prompt(self, topic_name: str) -> str:
-        """Obtiene prompt por defecto para una temática"""
-        base_prompt = """
-Eres un asistente especializado llamado AgentRagMCP. 
-Si no sabes la respuesta, simplemente di "No lo sé", pero no inventes una respuesta.
-Las respuestas deben ser concisas, de máximo tres o cuatro párrafos.
-Responde en castellano (español de España) a menos que se te pida explícitamente otro idioma.
-Usa el contexto proporcionado y el historial de conversación para dar la mejor respuesta posible.
-
-{context}
-"""
-        return base_prompt
-    
-    def _get_session_history(self, session_id: str) -> BaseChatMessageHistory:
-        """Obtiene o crea historial para una sesión"""
-        if session_id not in self.chat_histories:
-            self.chat_histories[session_id] = ChatMessageHistory()
-        return self.chat_histories[session_id]
-    
-    def check_and_reload_configs(self) -> List[str]:
-        """Verifica y recarga configuraciones si han cambiado"""
-        current_time = time.time()
-        
-        # Solo verificar periódicamente
-        if current_time - self.last_config_check < self.config_check_interval:
-            return []
-        
-        self.last_config_check = current_time
-        
-        # Verificar cambios
-        reloaded = config_manager.reload_if_changed()
-        
-        if reloaded:
-            logger.info(f"Recargando RAGs debido a cambios: {reloaded}")
-            
-            # Recargar RAGs afectados
-            for item in reloaded:
-                if item.startswith("rag:"):
-                    topic_name = item.split(":", 1)[1]
-                    # Limpiar y recargar
-                    if topic_name in self.chains:
-                        del self.chains[topic_name]
-                    if topic_name in self.retrievers:
-                        del self.retrievers[topic_name]
-                    
-                    self._load_rag_topic(topic_name)
-        
-        return reloaded
-    
-    def query(
-        self, 
-        question: str, 
-        topic: str, 
-        session_id: str,
-        include_sources: bool = False
-    ) -> Tuple[str, Dict[str, Any]]:
-        """
-        Realiza consulta con verificación automática de configuración
-        """
-        start_time = time.time()
-        context_logger = get_logger_with_context(
-            chat_session_id=session_id,
-            topic=topic
-        )
-        
+        """Crea cadena RAG con configuración específica"""
         try:
-            # Verificar y recargar configuraciones si es necesario
-            self.check_and_reload_configs()
+            # Crear prompt personalizado
+            if config.system_prompt:
+                system_template = config.system_prompt
+            else:
+                system_template = f"""Eres un asistente especializado en {config.display_name}.
+
+{config.description}
+
+Usa el siguiente contexto para responder la pregunta del usuario:
+
+{{context}}
+
+Pregunta: {{question}}
+Respuesta:"""
             
-            # Verificar que existe la cadena
-            if topic not in self.chains:
-                available_topics = list(self.chains.keys())
-                raise RetrievalError(
-                    f"Temática '{topic}' no disponible. Disponibles: {available_topics}"
-                )
+            # Crear prompt template
+            prompt = ChatPromptTemplate.from_template(system_template)
             
-            context_logger.info(f"Consulta RAG dinámica - Temática: {topic}")
-            
-            # Obtener configuración específica
-            config = self.loaded_configs.get(topic)
-            
-            # Ejecutar cadena
-            chain = self.chains[topic]
-            result = chain.invoke(
-                {"input": question},
-                config={"configurable": {"session_id": session_id}}
+            # Crear cadena conversacional
+            chain = ConversationalRetrievalChain.from_llm(
+                llm=self.llm,
+                retriever=retriever,
+                return_source_documents=True,
+                verbose=False,
+                combine_docs_chain_kwargs={"prompt": prompt}
             )
             
-            response_time = time.time() - start_time
+            return chain
             
-            # Extraer información
-            answer = result.get("answer", "No se pudo generar respuesta")
-            context_docs = result.get("context", [])
+        except Exception as e:
+            logger.error(f"Error creando cadena RAG para {config.name}: {e}")
+            return None
+    
+    def query(self, question: str, topic: str, session_id: str, include_sources: bool = False) -> Tuple[str, Dict[str, Any]]:
+        """Ejecuta consulta en un RAG específico"""
+        
+        # Verificar que el RAG existe
+        if topic not in self.chains:
+            raise AgentError(f"RAG no disponible: {topic}")
+        
+        # Obtener o crear historial de chat
+        if session_id not in self.chat_histories:
+            self.chat_histories[session_id] = ChatMessageHistory()
+        
+        chat_history = self.chat_histories[session_id]
+        
+        try:
+            # Ejecutar consulta
+            chain = self.chains[topic]
+            result = chain({
+                "question": question,
+                "chat_history": chat_history.messages
+            })
             
-            # Preparar metadatos con información de configuración
+            # Extraer respuesta
+            answer = result["answer"]
+            
+            # Preparar metadatos
             metadata = {
                 "topic": topic,
-                "session_id": session_id,
-                "response_time": response_time,
-                "num_sources": len(context_docs),
-                "sources": [],
-                "rag_config": {
-                    "display_name": config.display_name if config else topic,
-                    "search_type": config.retrieval.search_type if config else "unknown",
-                    "k": config.retrieval.k if config else "unknown",
-                    "model": config.vectorstore.embedding_model if config else "unknown"
-                }
+                "num_sources": len(result.get("source_documents", [])),
+                "session_id": session_id
             }
             
             # Incluir fuentes si se solicita
-            if include_sources and context_docs:
-                metadata["sources"] = [
-                    {
-                        "content": doc.page_content[:200] + "..." if len(doc.page_content) > 200 else doc.page_content,
+            if include_sources and "source_documents" in result:
+                sources = []
+                for doc in result["source_documents"]:
+                    sources.append({
+                        "content": doc.page_content[:500],  # Limitar tamaño
                         "metadata": doc.metadata
-                    }
-                    for doc in context_docs[:3]
-                ]
+                    })
+                metadata["sources"] = sources
             
-            # Logging de métricas
-            chat_metrics.log_chat_interaction(
-                session_id=session_id,
-                question=question,
-                agent_type="dynamic_rag",
-                topic=topic,
-                response_time=response_time,
-                success=True
-            )
-            
-            chat_metrics.log_rag_retrieval(
-                session_id=session_id,
-                topic=topic,
-                query=question,
-                num_results=len(context_docs),
-                retrieval_time=response_time
-            )
-            
-            context_logger.info(f"Consulta RAG dinámica completada - Tiempo: {response_time:.2f}s")
+            # Actualizar historial
+            chat_history.add_user_message(question)
+            chat_history.add_ai_message(answer)
             
             return answer, metadata
             
         except Exception as e:
-            response_time = time.time() - start_time
-            context_logger.error(f"Error en consulta RAG dinámica: {str(e)}")
-            chat_metrics.log_chat_interaction(
-                session_id=session_id,
-                question=question,
-                agent_type="dynamic_rag",
-                topic=topic,
-                response_time=response_time,
-                success=False,
-                error=str(e)
-            )
+            logger.error(f"Error en consulta RAG {topic}: {e}")
             raise handle_langchain_error(e)
     
     def get_available_topics(self) -> List[str]:
-        """Devuelve temáticas disponibles con recarga automática"""
-        self.check_and_reload_configs()
+        """Obtiene lista de temáticas RAG disponibles"""
         return list(self.chains.keys())
     
-    def get_topic_info(self, topic: str) -> Optional[Dict[str, Any]]:
-        """Obtiene información detallada de una temática"""
-        config = self.loaded_configs.get(topic)
-        if not config:
-            return None
+    def health_check(self) -> Dict[str, Any]:
+        """Health check del servicio RAG"""
+        return {
+            "status": "healthy" if self.chains else "degraded",
+            "service_type": "dynamic_rag",
+            "available_topics": len(self.chains),
+            "loaded_configs": len(self.loaded_configs),
+            "topics": list(self.chains.keys())
+        }
+
+class DynamicAgentService:
+    """Servicio de agentes con carga dinámica basada en configuración"""
+    
+    def __init__(self, rag_service: DynamicRAGService):
+        self.rag_service = rag_service
+        self.settings = get_settings()
         
-        return {
-            "name": config.name,
-            "display_name": config.display_name,
-            "description": config.description,
-            "enabled": config.enabled,
-            "priority": config.priority,
-            "categories": config.categories,
-            "keywords": config.keywords,
-            "vectorstore_config": {
-                "type": config.vectorstore.type,
-                "path": config.vectorstore.path,
-                "chunk_size": config.vectorstore.chunk_size,
-                "embedding_model": config.vectorstore.embedding_model
-            },
-            "retrieval_config": {
-                "search_type": config.retrieval.search_type,
-                "k": config.retrieval.k,
-                "score_threshold": config.retrieval.score_threshold
-            },
-            "custom_settings": config.custom_settings
-        }
+        # Componentes
+        self.agent_loader = DynamicAgentLoader()
+        self.agents: Dict[str, ConfigurableAgent] = {}
+        
+        # Control de recarga
+        self.last_config_check = 0
+        self.config_check_interval = 30  # segundos
+        
+        # Cargar agentes iniciales
+        self._discover_and_load_agents()
+        
+        logger.info(f"DynamicAgentService inicializado con {len(self.agents)} agentes")
     
-    def get_all_topics_info(self) -> Dict[str, Dict[str, Any]]:
-        """Obtiene información de todas las temáticas"""
-        return {
-            topic: self.get_topic_info(topic)
-            for topic in self.get_available_topics()
-        }
-    
-    def add_new_rag(self, topic_name: str, config_data: Dict[str, Any]) -> bool:
-        """Añade un nuevo RAG dinámicamente"""
+    def _discover_and_load_agents(self):
+        """Descubre y carga agentes basándose en configuración"""
+        
+        # Crear configuración de ejemplo si no existe
+        agents_file = config_manager.config_base_path / "agents.yaml"
+        if not agents_file.exists():
+            logger.info("Creando configuración de agentes de ejemplo...")
+            config_manager.create_sample_configs()
+        
+        # Cargar configuraciones de agentes
         try:
-            # Guardar configuración
-            rags_path = config_manager.config_base_path / "rags"
-            config_file = rags_path / f"{topic_name}.yaml"
-            
             import yaml
-            with open(config_file, 'w', encoding='utf-8') as f:
-                yaml.dump(config_data, f, default_flow_style=False, allow_unicode=True)
+            with open(agents_file, 'r', encoding='utf-8') as f:
+                data = yaml.safe_load(f)
             
-            # Cargar inmediatamente
-            success = self._load_rag_topic(topic_name)
+            agents_data = data.get("agents", {})
             
-            if success:
-                logger.info(f"Nuevo RAG añadido: {topic_name}")
-            
-            return success
+            for agent_name, agent_config in agents_data.items():
+                if agent_config.get("enabled", True):
+                    success = self._load_agent(agent_name)
+                    if success:
+                        logger.info(f"Agente cargado: {agent_name}")
+                    else:
+                        logger.warning(f"No se pudo cargar agente: {agent_name}")
             
         except Exception as e:
-            logger.error(f"Error añadiendo nuevo RAG {topic_name}: {e}")
+            logger.error(f"Error cargando agentes: {e}")
+    
+    def _load_agent(self, agent_name: str) -> bool:
+        """Carga un agente específico"""
+        try:
+            # Cargar configuración del agente
+            agent_config = config_manager.load_agent_config(agent_name)
+            if not agent_config:
+                logger.error(f"No se pudo cargar configuración para agente: {agent_name}")
+                return False
+            
+            # Crear instancia del agente
+            agent = self.agent_loader.create_agent(agent_config, self.rag_service)
+            if not agent:
+                logger.error(f"No se pudo crear instancia del agente: {agent_name}")
+                return False
+            
+            # Registrar agente
+            self.agents[agent_name] = agent
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error cargando agente {agent_name}: {e}")
             return False
     
-    def reload_rag(self, topic_name: str) -> bool:
-        """Recarga un RAG específico"""
+    def select_agent(self, question: str, context: Optional[Dict] = None) -> Tuple[ConfigurableAgent, float]:
+        """Selecciona el agente más apropiado para una pregunta"""
+        
+        available_agents = [agent for agent in self.agents.values() if agent.config.enabled]
+        
+        if not available_agents:
+            raise AgentSelectionError("No hay agentes disponibles")
+        
+        # Evaluar todos los agentes
+        agent_scores = []
+        for agent in available_agents:
+            try:
+                confidence = agent.can_handle(question, context)
+                agent_scores.append((agent, confidence))
+                logger.debug(f"Agente {agent.name}: confianza = {confidence:.3f}")
+            except Exception as e:
+                logger.warning(f"Error evaluando agente {agent.name}: {e}")
+                agent_scores.append((agent, 0.0))
+        
+        # Ordenar por confianza
+        agent_scores.sort(key=lambda x: x[1], reverse=True)
+        
+        best_agent, best_confidence = agent_scores[0]
+        
+        logger.info(f"Agente seleccionado: {best_agent.name} (confianza: {best_confidence:.3f})")
+        
+        return best_agent, best_confidence
+    
+    async def process_question(
+        self, 
+        question: str, 
+        session_id: str, 
+        agent_type: Optional[str] = None,
+        include_sources: bool = False,
+        context: Optional[Dict] = None
+    ) -> Tuple[str, Dict[str, Any]]:
+        """Procesa una pregunta usando el agente apropiado"""
+        
         try:
-            # Limpiar configuración actual
-            if topic_name in self.chains:
-                del self.chains[topic_name]
-            if topic_name in self.retrievers:
-                del self.retrievers[topic_name]
-            if topic_name in self.loaded_configs:
-                del self.loaded_configs[topic_name]
+            # Seleccionar agente
+            if agent_type:
+                # Usar agente específico
+                if agent_type not in self.agents:
+                    raise AgentNotFoundError(f"Agente no encontrado: {agent_type}")
+                agent = self.agents[agent_type]
+                confidence = agent.can_handle(question, context)
+            else:
+                # Selección automática
+                agent, confidence = self.select_agent(question, context)
             
-            # Recargar
-            return self._load_rag_topic(topic_name)
+            # Procesar pregunta
+            answer, metadata = agent.process(
+                question=question,
+                session_id=session_id,
+                include_sources=include_sources,
+                context=context
+            )
+            
+            # Enriquecer metadatos
+            metadata.update({
+                "agent_selection_confidence": confidence,
+                "agent_selection_method": "manual" if agent_type else "automatic"
+            })
+            
+            return answer, metadata
             
         except Exception as e:
-            logger.error(f"Error recargando RAG {topic_name}: {e}")
-            return False
+            logger.error(f"Error procesando pregunta: {e}")
+            raise
+    
+    def get_available_agents(self) -> List[ConfigurableAgent]:
+        """Devuelve lista de agentes disponibles"""
+        return [agent for agent in self.agents.values() if agent.config.enabled]
     
     def health_check(self) -> Dict[str, Any]:
-        """Health check del servicio RAG dinámico"""
-        health_status = {
-            "status": "healthy",
-            "service_type": "dynamic_rag",
-            "embeddings_cache": len(self.embeddings_cache),
-            "llm": "ok" if self.llm else "error",
-            "topics": {}
-        }
+        """Health check del servicio de agentes"""
         
-        # Verificar cada temática
-        for topic_name in self.get_available_topics():
-            config = self.loaded_configs.get(topic_name)
-            topic_status = {
-                "retriever": "ok" if topic_name in self.retrievers else "error",
-                "chain": "ok" if topic_name in self.chains else "error",
-                "config_loaded": config is not None,
-                "enabled": config.enabled if config else False,
-                "vectorstore_path": config.vectorstore.path if config else "unknown"
+        total_agents = len(self.agents)
+        enabled_agents = len([a for a in self.agents.values() if a.config.enabled])
+        
+        agent_health = {}
+        for name, agent in self.agents.items():
+            agent_health[name] = {
+                "enabled": agent.config.enabled,
+                "topics": agent.topics,
+                "total_queries": agent.stats["total_queries"],
+                "success_rate": (agent.stats["successful_queries"] / agent.stats["total_queries"]) 
+                               if agent.stats["total_queries"] > 0 else 0.0,
+                "class": agent.config.class_name
             }
-            health_status["topics"][topic_name] = topic_status
         
-        # Determinar estado general
-        active_topics = len([t for t in health_status["topics"].values() 
-                           if t["retriever"] == "ok" and t["chain"] == "ok"])
-        
-        if active_topics == 0:
-            health_status["status"] = "unhealthy"
-        elif active_topics < len(health_status["topics"]):
-            health_status["status"] = "degraded"
-        
-        health_status["active_topics"] = active_topics
-        health_status["total_configured"] = len(health_status["topics"])
-        
-        return health_status
-    
-    def clear_session_history(self, session_id: str):
-        """Limpia historial de sesión"""
-        if session_id in self.chat_histories:
-            del self.chat_histories[session_id]
-            logger.info(f"Historial eliminado para sesión: {session_id}")
-    
-    def get_session_summary(self, session_id: str) -> Dict[str, Any]:
-        """Obtiene resumen de sesión"""
-        if session_id not in self.chat_histories:
-            return {"session_id": session_id, "messages": 0, "exists": False}
-        
-        history = self.chat_histories[session_id]
         return {
-            "session_id": session_id,
-            "messages": len(history.messages),
-            "exists": True,
-            "last_message": history.messages[-1] if history.messages else None
+            "status": "healthy" if enabled_agents > 0 else "degraded",
+            "service_type": "dynamic_agents",
+            "total_agents": total_agents,
+            "enabled_agents": enabled_agents,
+            "agents": agent_health
+        }
+
+class DynamicAgentSystem:
+    """Sistema completo de agentes y RAGs dinámicos"""
+    
+    def __init__(self):
+        logger.info("Inicializando DynamicAgentSystem...")
+        
+        # Inicializar servicios
+        self.rag_service = DynamicRAGService()
+        self.agent_service = DynamicAgentService(self.rag_service)
+        
+        logger.info("DynamicAgentSystem inicializado exitosamente")
+    
+    async def process_question(
+        self, 
+        question: str, 
+        session_id: str, 
+        agent_type: Optional[str] = None,
+        include_sources: bool = False,
+        context: Optional[Dict] = None
+    ) -> Tuple[str, Dict[str, Any]]:
+        """Procesa una pregunta usando el sistema completo"""
+        return await self.agent_service.process_question(
+            question, session_id, agent_type, include_sources, context
+        )
+    
+    def get_available_topics(self) -> List[str]:
+        """Obtiene temáticas RAG disponibles"""
+        return self.rag_service.get_available_topics()
+    
+    def get_available_agents(self) -> List[ConfigurableAgent]:
+        """Obtiene agentes disponibles"""
+        return self.agent_service.get_available_agents()
+    
+    def health_check(self) -> Dict[str, Any]:
+        """Health check del sistema completo"""
+        rag_health = self.rag_service.health_check()
+        agent_health = self.agent_service.health_check()
+        
+        overall_status = "healthy"
+        if rag_health["status"] != "healthy" or agent_health["status"] != "healthy":
+            overall_status = "degraded"
+        
+        return {
+            "status": overall_status,
+            "timestamp": datetime.now().isoformat(),
+            "rag_service": rag_health,
+            "agent_service": agent_health,
+            "system_info": {
+                "available_topics": len(self.get_available_topics()),
+                "available_agents": len(self.get_available_agents())
+            }
         }

@@ -1,3 +1,6 @@
+# Corrección para agentragmcp/api/app/agents/dinamic_agent.py
+# Añadir la clase DynamicAgent que falta
+
 """
 Sistema de agentes dinámico que se carga basándose en configuraciones
 Permite agregar nuevos agentes sin modificar código
@@ -12,7 +15,7 @@ from datetime import datetime
 
 from agentragmcp.core.dynamic_config import config_manager, AgentConfig
 from agentragmcp.core.config import get_settings
-from agentragmcp.core.monitoring import logger, chat_metrics, get_logger_with_context
+from agentragmcp.core.monitoring import logger, get_logger_with_context
 from agentragmcp.core.exceptions import (
     AgentError, AgentNotFoundError, AgentSelectionError,
     handle_langchain_error
@@ -71,25 +74,13 @@ class ConfigurableAgent(ABC):
         if species_matches > 0:
             confidence += self.config.species_weight * min(species_matches * 0.3, 1.0)
         
-        # 4. Nombres comunes
-        common_matches = sum(1 for name in self.config.common_names 
-                           if name.lower() in question_lower)
-        if common_matches > 0:
-            confidence += self.config.species_weight * 0.5 * min(common_matches * 0.2, 0.6)
-        
-        # 5. Patrones regex
+        # 4. Patrones regex
         pattern_matches = sum(1 for pattern in self._compiled_patterns 
-                            if pattern.search(question_lower))
+                            if pattern.search(question))
         if pattern_matches > 0:
-            confidence += self.config.pattern_weight * min(pattern_matches * 0.3, 1.0)
+            confidence += self.config.pattern_weight * min(pattern_matches * 0.25, 1.0)
         
-        # 6. Bonus por contexto
-        if context:
-            topic = context.get("topic", "").lower()
-            if topic in [t.lower() for t in self.topics]:
-                confidence += self.config.context_bonus
-        
-        # Aplicar límites de confianza
+        # 5. Aplicar límites
         confidence = max(self.config.min_confidence, 
                         min(confidence, self.config.max_confidence))
         
@@ -97,51 +88,104 @@ class ConfigurableAgent(ABC):
     
     @abstractmethod
     def process(self, question: str, session_id: str, **kwargs) -> Tuple[str, Dict[str, Any]]:
-        """Procesa la pregunta y devuelve respuesta"""
+        """Procesa una pregunta y devuelve respuesta y metadatos"""
         pass
+
+# AÑADIR LA CLASE QUE FALTA: DynamicAgent
+class DynamicAgent(ConfigurableAgent):
+    """
+    Agente dinámico que se configura completamente desde archivos de configuración
+    Esta es la clase que estaba faltando y causaba el error de importación
+    """
     
-    def update_stats(self, confidence: float, success: bool = True):
-        """Actualiza estadísticas del agente"""
-        self.stats["total_queries"] += 1
-        self.stats["last_used"] = datetime.now()
+    def __init__(self, agent_name: str, config: Dict[str, Any], rag_service):
+        # Crear AgentConfig desde diccionario
+        agent_config = AgentConfig(
+            name=agent_name,
+            description=config.get("description", f"Agente {agent_name}"),
+            class_name=config.get("class", "DynamicAgent"),
+            topics=config.get("topics", [agent_name]),
+            enabled=config.get("enabled", True),
+            priority=config.get("priority", 1),
+            max_confidence=config.get("config", {}).get("max_confidence", 1.0),
+            min_confidence=config.get("config", {}).get("min_confidence", 0.1),
+            primary_keywords=config.get("config", {}).get("primary_keywords", []),
+            secondary_keywords=config.get("config", {}).get("secondary_keywords", []),
+            patterns=config.get("config", {}).get("patterns", []),
+            target_species=config.get("config", {}).get("target_species", []),
+            keyword_weight=config.get("thresholds", {}).get("keyword_weight", 0.3),
+            species_weight=config.get("thresholds", {}).get("species_weight", 0.5),
+            pattern_weight=config.get("thresholds", {}).get("pattern_weight", 0.2),
+            custom_config=config.get("config", {})
+        )
         
-        if success:
-            self.stats["successful_queries"] += 1
-        else:
-            self.stats["failed_queries"] += 1
+        super().__init__(agent_config, rag_service)
+        self.agent_name = agent_name
+        self.custom_config = config.get("config", {})
+    
+    def calculate_confidence(self, question: str) -> float:
+        """Método para compatibilidad - llama a can_handle"""
+        return self.can_handle(question)
+    
+    def enhance_response(self, response: str, question: str) -> str:
+        """Método base para mejorar respuestas - los agentes pueden sobrescribirlo"""
+        return response
+    
+    def process(self, question: str, session_id: str, **kwargs) -> Tuple[str, Dict[str, Any]]:
+        """Procesa la pregunta usando el RAG configurado"""
+        context_logger = get_logger_with_context(
+            chat_session_id=session_id,
+            agent_type=self.name
+        )
         
-        # Actualizar promedio de confianza
-        total_successful = self.stats["successful_queries"]
-        if total_successful > 0:
-            current_avg = self.stats["average_confidence"]
-            self.stats["average_confidence"] = (
-                (current_avg * (total_successful - 1) + confidence) / total_successful
+        try:
+            # Usar el primer topic como principal
+            main_topic = self.topics[0] if self.topics else "general"
+            
+            context_logger.info(f"Procesando con agente dinámico {self.name} - Topic: {main_topic}")
+            
+            # Procesar con RAG
+            answer, metadata = self.rag_service.query(
+                question=question,
+                topic=main_topic,
+                session_id=session_id,
+                include_sources=kwargs.get("include_sources", False)
             )
-    
-    def get_info(self) -> Dict[str, Any]:
-        """Información completa del agente"""
-        return {
-            "name": self.name,
-            "description": self.description,
-            "class_name": self.config.class_name,
-            "topics": self.topics,
-            "enabled": self.config.enabled,
-            "priority": self.config.priority,
-            "stats": self.stats,
-            "config_summary": {
-                "keywords": len(self.config.primary_keywords + self.config.secondary_keywords),
-                "patterns": len(self.config.patterns),
-                "species": len(self.config.target_species),
-                "weights": {
-                    "keyword": self.config.keyword_weight,
-                    "species": self.config.species_weight,
-                    "pattern": self.config.pattern_weight
-                }
-            }
-        }
+            
+            # Mejorar respuesta si el agente lo permite
+            enhanced_answer = self.enhance_response(answer, question)
+            
+            # Enriquecer metadatos
+            metadata.update({
+                "agent_type": self.name,
+                "agent_description": self.description,
+                "agent_class": "DynamicAgent",
+                "config_based": True,
+                "confidence": self.calculate_confidence(question)
+            })
+            
+            # Actualizar estadísticas
+            self.stats["total_queries"] += 1
+            self.stats["successful_queries"] += 1
+            self.stats["last_used"] = datetime.now()
+            
+            return enhanced_answer, metadata
+            
+        except Exception as e:
+            context_logger.error(f"Error en agente dinámico {self.name}: {e}")
+            self.stats["total_queries"] += 1
+            self.stats["failed_queries"] += 1
+            raise
 
 class GenericRAGAgent(ConfigurableAgent):
-    """Agente genérico que puede manejar cualquier temática RAG"""
+    """Agente genérico que puede usarse para cualquier temática"""
+    
+    def __init__(self, config: AgentConfig, rag_service):
+        super().__init__(config, rag_service)
+    
+    def can_handle(self, question: str, context: Optional[Dict] = None) -> float:
+        """Agente genérico siempre puede manejar consultas con confianza base"""
+        return super().can_handle(question, context)
     
     def process(self, question: str, session_id: str, **kwargs) -> Tuple[str, Dict[str, Any]]:
         """Procesa usando el primer topic configurado"""
@@ -183,7 +227,8 @@ class DynamicAgentLoader:
     
     def __init__(self):
         self.agent_classes: Dict[str, Type[ConfigurableAgent]] = {
-            "GenericRAGAgent": GenericRAGAgent
+            "GenericRAGAgent": GenericRAGAgent,
+            "DynamicAgent": DynamicAgent  # Añadir la clase que faltaba
         }
         self.custom_modules = {}
         
@@ -193,7 +238,7 @@ class DynamicAgentLoader:
     def _register_existing_agents(self):
         """Registra agentes existentes en el sistema"""
         try:
-            # Intentar importar agentes existentes
+            # Intentar importar agentes existentes (si existen)
             from agentragmcp.api.app.agents.plants_agent import PlantsAgent
             from agentragmcp.api.app.agents.pathology_agent import PathologyAgent
             from agentragmcp.api.app.agents.general_agent import GeneralAgent
@@ -208,7 +253,7 @@ class DynamicAgentLoader:
             logger.info("Agentes existentes registrados con adaptador de configuración")
             
         except ImportError as e:
-            logger.warning(f"No se pudieron cargar agentes existentes: {e}")
+            logger.info(f"Agentes legacy no disponibles (esto es normal tras migración): {e}")
     
     def _create_adapter_class(self, original_class):
         """Crea una clase adaptadora para agentes existentes"""
@@ -244,9 +289,9 @@ class DynamicAgentLoader:
             module = self.custom_modules[module_path]
             agent_class = getattr(module, class_name)
             
-            # Verificar que hereda de ConfigurableAgent
-            if not issubclass(agent_class, ConfigurableAgent):
-                logger.error(f"Clase {class_name} no hereda de ConfigurableAgent")
+            # Verificar que hereda de ConfigurableAgent o DynamicAgent
+            if not (issubclass(agent_class, ConfigurableAgent) or issubclass(agent_class, DynamicAgent)):
+                logger.error(f"Clase {class_name} debe heredar de ConfigurableAgent o DynamicAgent")
                 return None
             
             return agent_class
@@ -268,9 +313,9 @@ class DynamicAgentLoader:
             # Agente registrado
             agent_class = self.agent_classes[config.class_name]
         else:
-            # Usar agente genérico como fallback
-            logger.warning(f"Clase de agente {config.class_name} no encontrada, usando GenericRAGAgent")
-            agent_class = GenericRAGAgent
+            # Usar agente dinámico como fallback
+            logger.warning(f"Clase de agente {config.class_name} no encontrada, usando DynamicAgent")
+            agent_class = DynamicAgent
         
         if not agent_class:
             logger.error(f"No se pudo determinar clase para agente {config.name}")
@@ -285,7 +330,6 @@ class DynamicAgentLoader:
         except Exception as e:
             logger.error(f"Error creando agente {config.name}: {e}")
             return None
-
 class DynamicAgentService:
     """Servicio de agentes con carga dinámica basada en configuración"""
     

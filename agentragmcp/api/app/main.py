@@ -203,8 +203,16 @@ def create_application() -> FastAPI:
         from agentragmcp.core.dynamic_config import config_manager
         
         # Cargar configuraciones dinámicas
-        config_manager.load_all_configs()
-        logger.info("Sistema dinámico inicializado")    
+        discovered = config_manager.discover_rag_configs()
+        if not discovered:
+            config_manager.create_sample_configs()
+            discovered = config_manager.discover_rag_configs()
+
+        # Cargar configuraciones
+        for topic in discovered:
+            config_manager.load_rag_config(topic)
+
+        logger.info(f"Sistema dinámico inicializado con {len(discovered)} RAGs")
 
     # Incluir routers
     app.include_router(health.router)

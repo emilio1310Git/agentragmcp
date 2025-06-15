@@ -88,33 +88,6 @@ class Settings(BaseSettings):
     # Configuración de monitoreo
     METRICS_ENABLED: bool = Field(default=True, json_schema_extra={"env": "METRICS_ENABLED"})
     
-    @field_validator("RAG_TOPICS", mode="before")
-    @classmethod
-    def parse_rag_topics(cls, v):
-        """Parsea la lista de temáticas RAG desde string o lista"""
-        if v is None or v == "":
-            return ["plants", "pathology", "general"]
-        if isinstance(v, str):
-            # Limpiar y dividir por comas
-            topics = [topic.strip() for topic in v.split(",") if topic.strip()]
-            return topics if topics else ["plants", "pathology", "general"]
-        if isinstance(v, list):
-            return v
-        return ["plants", "pathology", "general"]
-
-    @field_validator("SPECIFIC_SPECIES", "PATHOLOGY_SPECIES", mode="before")
-    @classmethod
-    def parse_species_lists(cls, v):
-        """Parsea las listas de especies desde string o lista"""
-        if v is None or v == "":
-            return []
-        if isinstance(v, str):
-            species = [species.strip() for species in v.split(",") if species.strip()]
-            return species
-        if isinstance(v, list):
-            return v
-        return []
-
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def parse_cors_origins(cls, v):

@@ -290,7 +290,7 @@ text_splitter = RecursiveCharacterTextSplitter(
 chunks = text_splitter.split_documents(documents)
 
 # Crear embeddings
-embeddings = OllamaEmbeddings(model="llama3.1")
+embeddings = OllamaEmbeddings(model="hdnh2006/salamandra-7b-instruct:latest")
 
 # Crear vectorstore
 vectorstore = Chroma.from_documents(

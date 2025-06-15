@@ -44,6 +44,7 @@ vectorstore:
   chunk_size: 1000
   collection_name: pathology_collection
   embedding_base_url: http://localhost:11434
-  embedding_model: llama3.1
+  # embedding_model: llama3.1
+  embedding_model: "hdnh2006/salamandra-7b-instruct:latest"
   path: ./data/vectorstores/pathology
   type: chroma

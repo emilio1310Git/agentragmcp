@@ -25,7 +25,8 @@ topics:
       
     # Configuración específica del embedding
     embedding:
-      model: "llama3.1"  # Se hereda de configuración global
+      # model: "llama3.1"  # Se hereda de configuración global
+      model: "hdnh2006/salamandra-7b-instruct:latest"
       chunk_size: 1000
       chunk_overlap: 200
       
@@ -96,7 +97,8 @@ topics:
       score_threshold: 0.4  # Umbral más bajo para síntomas diversos
       
     embedding:
-      model: "llama3.1"
+      # model: "llama3.1"  # Se hereda de configuración global
+      model: "hdnh2006/salamandra-7b-instruct:latest"
       chunk_size: 800  # Chunks más pequeños para síntomas específicos
       chunk_overlap: 150
       
@@ -173,7 +175,8 @@ topics:
       lambda_mult: 0.8  # Más énfasis en relevancia para consultas generales
       
     embedding:
-      model: "llama3.1"
+      # model: "llama3.1"  # Se hereda de configuración global
+      model: "hdnh2006/salamandra-7b-instruct:latest"
       chunk_size: 1200  # Chunks más grandes para contexto amplio
       chunk_overlap: 250
       
@@ -249,7 +252,8 @@ global_retrieval_config:
 # Configuración de embeddings
 embedding_config:
   # Configuración global de embeddings
-  default_model: "llama3.1"
+  # default_model: "llama3.1"
+  default_model: "hdnh2006/salamandra-7b-instruct:latest"  
   normalize_embeddings: true
   
   # Configuración de chunking

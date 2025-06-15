@@ -49,6 +49,7 @@ vectorstore:
   chunk_size: 800
   collection_name: urban_gardening_collection
   embedding_base_url: http://localhost:11434
-  embedding_model: llama3.1
+  # embedding_model: llama3.1
+  embedding_model: "hdnh2006/salamandra-7b-instruct:latest"
   path: ./data/vectorstores/urban_gardening
   type: chroma

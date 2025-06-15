@@ -113,9 +113,9 @@ API_PORT=8000
 CORS_ORIGINS=["http://localhost:3000","http://localhost:8080"]
 
 # LLM
-LLM_MODEL=llama3.1
+LLM_MODEL=hdnh2006/salamandra-7b-instruct:latest
 LLM_BASE_URL=http://localhost:11434
-EMBEDDING_MODEL=llama3.1
+EMBEDDING_MODEL=hdnh2006/salamandra-7b-instruct:latest
 
 # RAG - lista separada por comas
 RAG_TOPICS=plants,pathology,general

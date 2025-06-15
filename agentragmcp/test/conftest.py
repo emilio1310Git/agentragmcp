@@ -38,7 +38,8 @@ def test_settings(temp_data_dir):
         "LOG_LEVEL": "debug",
         "VECTORSTORE_BASE_PATH": str(temp_data_dir / "vectorstores"),
         "LLM_BASE_URL": "http://localhost:11434",  # Asumir Ollama local
-        "LLM_MODEL": "llama3.1",
+        # "LLM_MODEL": "llama3.1",
+        "LLM_MODEL": "hdnh2006/salamandra-7b-instruct:latest",        
         "RAG_TOPICS": "plants,pathology,general",
         "MCP_ENABLED": "false"
     })

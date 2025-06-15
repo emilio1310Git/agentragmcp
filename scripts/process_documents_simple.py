@@ -153,7 +153,7 @@ def check_ollama_connection():
         print(f"❌ Error conectando con Ollama: {e}")
         print("\n💡 SOLUCIONES:")
         print("1. Verificar que Ollama esté ejecutándose: ollama serve")
-        print("2. Verificar modelo: ollama pull llama3.1")
+        print("2. Verificar modelo: ollama pull que se usa en el script")
         print("3. Verificar URL en .env: LLM_BASE_URL=http://localhost:11434")
         return False
 

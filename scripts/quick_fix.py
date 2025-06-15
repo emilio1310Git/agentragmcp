@@ -275,7 +275,7 @@ def create_minimal_configs():
                 "k": 3
             },
             "embedding": {
-                "model": "llama3.1",
+                "model": "hdnh2006/salamandra-7b-instruct:latest",
                 "chunk_size": 1000,
                 "chunk_overlap": 200
             }
@@ -296,7 +296,7 @@ def create_minimal_configs():
                 "k": 3
             },
             "embedding": {
-                "model": "llama3.1",
+                "model": "hdnh2006/salamandra-7b-instruct:latest",
                 "chunk_size": 800,
                 "chunk_overlap": 150
             }
@@ -317,7 +317,7 @@ def create_minimal_configs():
                 "k": 3
             },
             "embedding": {
-                "model": "llama3.1",
+                "model": "hdnh2006/salamandra-7b-instruct:latest",
                 "chunk_size": 1200,
                 "chunk_overlap": 250
             }

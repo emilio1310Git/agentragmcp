@@ -26,7 +26,8 @@ class VectorStoreConfig:
     separators: List[str] = field(default_factory=lambda: ["\n\n", "\n", ". ", " "])
     
     # Configuración de embeddings
-    embedding_model: str = "llama3.1"
+    # embedding_model: str = "llama3.1"
+    embedding_model: str = "hdnh2006/salamandra-7b-instruct:latest"
     embedding_base_url: str = "http://localhost:11434"
     normalize_embeddings: bool = True
 
@@ -195,7 +196,8 @@ class ConfigManager:
             collection_name=vectorstore_data.get("collection_name", f"{name}_collection"),
             chunk_size=vectorstore_data.get("chunk_size", 1000),
             chunk_overlap=vectorstore_data.get("chunk_overlap", 200),
-            embedding_model=vectorstore_data.get("embedding_model", "llama3.1"),
+            # embedding_model=vectorstore_data.get("embedding_model", "llama3.1"),
+            embedding_model=vectorstore_data.get("embedding_model", "hdnh2006/salamandra-7b-instruct:latest"),
             embedding_base_url=vectorstore_data.get("embedding_base_url", "http://localhost:11434")
         )
         
@@ -299,7 +301,8 @@ class ConfigManager:
                         "fetch_k": 20
                     },
                     "embedding": {
-                        "model": "llama3.1",
+                        #"model": "llama3.1",
+                        "model": "hdnh2006/salamandra-7b-instruct:latest",
                         "chunk_size": 1000,
                         "chunk_overlap": 200
                     }
@@ -320,7 +323,8 @@ class ConfigManager:
                         "fetch_k": 15
                     },
                     "embedding": {
-                        "model": "llama3.1",
+                        #"model": "llama3.1",
+                        "model": "hdnh2006/salamandra-7b-instruct:latest",
                         "chunk_size": 800,
                         "chunk_overlap": 150
                     }
@@ -340,7 +344,8 @@ class ConfigManager:
                         "k": 4
                     },
                     "embedding": {
-                        "model": "llama3.1",
+                        #"model": "llama3.1",
+                        "model": "hdnh2006/salamandra-7b-instruct:latest",
                         "chunk_size": 1200,
                         "chunk_overlap": 250
                     }
@@ -483,7 +488,8 @@ class ConfigManager:
                 "collection_name": "plants_collection",
                 "chunk_size": 1000,
                 "chunk_overlap": 200,
-                "embedding_model": "llama3.1"
+                # "embedding_model": "llama3.1"
+                "embedding_model": "hdnh2006/salamandra-7b-instruct:latest"
             },
             "retrieval": {
                 "search_type": "mmr",

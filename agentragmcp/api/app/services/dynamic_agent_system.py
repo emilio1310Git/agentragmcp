@@ -19,6 +19,7 @@ from langchain_community.chat_message_histories import ChatMessageHistory
 
 # Importar nuestro gestor de configuración
 from agentragmcp.core.dynamic_config import config_manager, RAGTopicConfig
+from agentragmcp.api.app.agents.dinamic_agent import DynamicAgent
 from agentragmcp.core.config import get_settings
 from agentragmcp.core.monitoring import logger, chat_metrics, get_logger_with_context
 from agentragmcp.core.exceptions import (

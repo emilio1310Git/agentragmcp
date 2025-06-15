@@ -26,16 +26,12 @@ async def detailed_health_check():
     """Health check detallado de todos los componentes"""
     try:
         # Importar servicios dinámicamente para evitar dependencias circulares
-        from agentragmcp.api.app.routers.chat import rag_service, agent_service, mcp_service
+        from agentragmcp.api.app.routers.chat import dynamic_system, mcp_service
         
         settings = get_settings()
         uptime = time.time() - start_time
         
-        # Verificar RAG Service
-        rag_health = rag_service.health_check()
-        
-        # Verificar Agent Service
-        agent_health = agent_service.health_check()
+        system_health = dynamic_system.health_check()
         
         # Verificar MCP Service (si está habilitado)
         mcp_health = None
@@ -43,7 +39,7 @@ async def detailed_health_check():
             mcp_health = mcp_service.health_check()
         
         # Estado general
-        components_status = [rag_health.get("status"), agent_health.get("status")]
+        components_status = [system_health.get("status")]
         if mcp_health:
             components_status.append(mcp_health.get("status"))
         
@@ -60,8 +56,7 @@ async def detailed_health_check():
             "environment": settings.ENVIRONMENT,
             "uptime": uptime,
             "components": {
-                "rag_service": rag_health,
-                "agent_service": agent_health
+                "system_health": system_health
             }
         }
         
@@ -94,8 +89,8 @@ async def detailed_health_check():
 async def rag_health():
     """Health check específico del servicio RAG"""
     try:
-        from agentragmcp.api.app.routers.chat import rag_service
-        return rag_service.health_check()
+        from agentragmcp.api.app.routers.chat import dynamic_system
+        return dynamic_system.health_check()
     except Exception as e:
         logger.error(f"Error en health check RAG: {e}")
         raise HTTPException(status_code=503, detail=f"Error en servicio RAG: {str(e)}")
@@ -104,8 +99,8 @@ async def rag_health():
 async def agents_health():
     """Health check específico del servicio de agentes"""
     try:
-        from agentragmcp.api.app.routers.chat import agent_service
-        return agent_service.health_check()
+        from agentragmcp.api.app.routers.chat import dynamic_system
+        return dynamic_system.health_check()
     except Exception as e:
         logger.error(f"Error en health check agentes: {e}")
         raise HTTPException(status_code=503, detail=f"Error en servicio de agentes: {str(e)}")

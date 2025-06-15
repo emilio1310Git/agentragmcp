@@ -52,6 +52,10 @@ class Settings(BaseSettings):
     CONFIG_BASE_PATH: str = Field(
         default="./data/configs",
         json_schema_extra={"env": "CONFIG_BASE_PATH"}
+    )
+    CONFIG_AUTO_RELOAD: bool = Field(
+        default=True,
+        json_schema_extra={"env": "CONFIG_AUTO_RELOAD"}
     )    
     
     # Configuración RAG - usar string por defecto y convertir

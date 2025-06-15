@@ -83,11 +83,11 @@ async def list_rag_topics(token: str = Depends(verify_admin_token)):
         
         settings = get_settings()
         topics_info = {}
-        
+        from agentragmcp.api.app.routers.chat import dynamic_system
         available_topics = dynamic_system.get_available_topics()
         for topic in available_topics:
             vectorstore_path = settings.get_vectorstore_path(topic)
-            is_available = topic in rag_service.get_available_topics()
+            is_available = topic in dynamic_system.get_available_topics()
             
             topics_info[topic] = {
                 "available": is_available,
@@ -109,9 +109,8 @@ async def list_rag_topics(token: str = Depends(verify_admin_token)):
 async def get_agents_details(token: str = Depends(verify_admin_token)):
     """Información detallada de todos los agentes"""
     try:
-        from agentragmcp.api.app.routers.chat import agent_service
-        
-        agents_info = agent_service.get_available_agents()
+        from agentragmcp.api.app.routers.chat import dynamic_system
+        agents_info = dynamic_system.get_available_agents()
         
         # Agregar información adicional de cada agente
         detailed_info = {}
